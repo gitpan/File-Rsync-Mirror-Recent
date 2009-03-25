@@ -1,0 +1,50 @@
+This file contains message digests of all files listed in MANIFEST,
+signed via the Module::Signature module, version 0.55.
+
+To verify the content in this distribution, first make sure you have
+Module::Signature installed, then type:
+
+    % cpansign -v
+
+It will check each file's integrity, as well as the signature's
+validity.  If "==> Signature verified OK! <==" is not displayed,
+the distribution may already have been compromised, and you should
+not run its Makefile.PL or Build.PL.
+
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA1
+
+SHA1 8c724b968d96af97a22da8abcc4e2fc7071bb997 Changes
+SHA1 27d8090894d7f7f4e85f0872f1953dd24239acec HOWTO.mirrorcpan
+SHA1 3646909920906b4f474bd8c89cb534aca5b45df4 MANIFEST
+SHA1 ce74ae75ce94d892e544b0d525831a44ddd421f3 MANIFEST.SKIP
+SHA1 bad862b82dc267ae1ad5168e667e8357c5cb9545 META.yml
+SHA1 7aa8545fec523e0db42756bd5603364389073bb1 Makefile.PL
+SHA1 9f8f5135ada0099d2bacb732145ceacb3658bdda README
+SHA1 1eda5b4bda125e771ef9ab99398ce94f589308cb Todo
+SHA1 b9fe83d0c7366cef8d09981dca947e49461b505c bin/rrr-aggregate
+SHA1 1762bc2289ebde5181e2eee557645c4fe91e20cf bin/rrr-dirtyupdate
+SHA1 65c643b6c4f1871f709863862291627110177167 bin/rrr-news
+SHA1 5bc819449f48e0675754d6e452e22fc35ec9bb0e bin/rrr-overview
+SHA1 a6f39f4f08b867a5b7260487cda9af2d9c25c90a lib/File/Rsync/Mirror/Recent.pm
+SHA1 a1e43b75eb7bc35fa9092f5b044b8329097e4039 lib/File/Rsync/Mirror/Recentfile.pm
+SHA1 a601fa2e96178b9865129f6ce4ade6a71ff3be37 lib/File/Rsync/Mirror/Recentfile/Done.pm
+SHA1 f7ca07c1473c95df5360a3a1bba7a41912c59f29 lib/File/Rsync/Mirror/Recentfile/FakeBigFloat.pm
+SHA1 5dd85d6ead94dda9a82b870e769df7c3d8af49e2 t/00-load.t
+SHA1 117b87577c3a0f08c385addd678ca82a273c9a91 t/01-util.t
+SHA1 c109face47e10c9aa4466487f43d20f60b1c63f7 t/02-operation.t
+SHA1 cc103901a4c116a6e43e7aaf85799b5bd26f0bb1 t/03-done.t
+SHA1 a27fda4e62ebea458dae53cd30474b71ebd0624c t/04-run.t
+SHA1 c4c1beb50a6545c80f42234dcc21beee8e2ac20f t/70_critic.t
+SHA1 2cf0248a9cd211c9bb7ded7d7f035e3638244c11 t/RECENT-1h.yaml
+SHA1 3503eb153f63dd8d11b49161c27047e7bf0b8a04 t/RECENT-6h.yaml
+SHA1 c2f650a64722a9369f9b749d3aeccc9658aa99cc t/perlcriticrc
+SHA1 0b1c5a2d59be6bfa7d60c64cd964fea6a0331705 t/pod-coverage.t
+SHA1 640935336dc1123c0069bcf5432bcaedc2cf22d3 t/pod.t
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.9 (GNU/Linux)
+
+iEYEARECAAYFAknJtZkACgkQ7IA58KMXwV2AvgCgnzAjvfFAQhsROJGGAqfMUajE
+En0AoKdY1oPQNFfMw4+7k92QePHQckY/
+=11FC
+-----END PGP SIGNATURE-----
