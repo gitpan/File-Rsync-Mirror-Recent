@@ -14,11 +14,11 @@ not run its Makefile.PL or Build.PL.
 -----BEGIN PGP SIGNED MESSAGE-----
 Hash: SHA1
 
-SHA1 99a2d47d0a55b3753097917f144ab6c2ee4365ae Changes
-SHA1 7834777c1a47487f7d6274a98992a18466795b9f HOWTO.mirrorcpan
+SHA1 5e96ac8139070fcdb020ceb0e133823a6b2ee071 Changes
+SHA1 82ecbb42721e1f61e87f64af1004002f0d6a81d8 HOWTO.mirrorcpan
 SHA1 3646909920906b4f474bd8c89cb534aca5b45df4 MANIFEST
 SHA1 ce74ae75ce94d892e544b0d525831a44ddd421f3 MANIFEST.SKIP
-SHA1 a63fba36c19c2e9478a57c089c5470e5f1672acf META.yml
+SHA1 0e28bc0ba4ca38d2c80dcb2440429310fc4da9b1 META.yml
 SHA1 7aa8545fec523e0db42756bd5603364389073bb1 Makefile.PL
 SHA1 9f8f5135ada0099d2bacb732145ceacb3658bdda README
 SHA1 497a182e3daa508bebc8754866f59b3cca836981 Todo
@@ -26,11 +26,11 @@ SHA1 b9fe83d0c7366cef8d09981dca947e49461b505c bin/rrr-aggregate
 SHA1 1762bc2289ebde5181e2eee557645c4fe91e20cf bin/rrr-dirtyupdate
 SHA1 65c643b6c4f1871f709863862291627110177167 bin/rrr-news
 SHA1 5bc819449f48e0675754d6e452e22fc35ec9bb0e bin/rrr-overview
-SHA1 bf09e30bc74047f53492cab188c52d7f5f9ba48c lib/File/Rsync/Mirror/Recent.pm
+SHA1 0b656bc7c6bd5fed675e07d449b1d487793ab719 lib/File/Rsync/Mirror/Recent.pm
 SHA1 3f9d7b4bbda9d593392f24022a45d278a9486b0a lib/File/Rsync/Mirror/Recentfile.pm
 SHA1 a601fa2e96178b9865129f6ce4ade6a71ff3be37 lib/File/Rsync/Mirror/Recentfile/Done.pm
 SHA1 f7ca07c1473c95df5360a3a1bba7a41912c59f29 lib/File/Rsync/Mirror/Recentfile/FakeBigFloat.pm
-SHA1 5dd85d6ead94dda9a82b870e769df7c3d8af49e2 t/00-load.t
+SHA1 ecb0eeca7d32ebd78fdec1e3eac99f07a2afb35e t/00-load.t
 SHA1 117b87577c3a0f08c385addd678ca82a273c9a91 t/01-util.t
 SHA1 caf8d464c992797c9b09ffeea00cfe48752e752d t/02-operation.t
 SHA1 cc103901a4c116a6e43e7aaf85799b5bd26f0bb1 t/03-done.t
@@ -39,12 +39,12 @@ SHA1 c4c1beb50a6545c80f42234dcc21beee8e2ac20f t/70_critic.t
 SHA1 2cf0248a9cd211c9bb7ded7d7f035e3638244c11 t/RECENT-1h.yaml
 SHA1 3503eb153f63dd8d11b49161c27047e7bf0b8a04 t/RECENT-6h.yaml
 SHA1 c2f650a64722a9369f9b749d3aeccc9658aa99cc t/perlcriticrc
-SHA1 0b1c5a2d59be6bfa7d60c64cd964fea6a0331705 t/pod-coverage.t
+SHA1 d51bd56359ff586982a17f8adeb9e0636abf3a11 t/pod-coverage.t
 SHA1 640935336dc1123c0069bcf5432bcaedc2cf22d3 t/pod.t
 -----BEGIN PGP SIGNATURE-----
 Version: GnuPG v1.4.9 (GNU/Linux)
 
-iEYEARECAAYFAknPqjYACgkQ7IA58KMXwV2ylQCg2nKJlkzXti02iFKXksERAdC8
-iYkAn0RFS414qupQouzuIgc7cUH6Rccm
-=7+MV
+iEYEARECAAYFAknQpckACgkQ7IA58KMXwV0lngCgxmyIWTCgEcVtYx7D3vJhSGjz
+Q9MAoKQYa6pMDMeHvRBFgRFaTtx+pEfJ
+=h2al
 -----END PGP SIGNATURE-----

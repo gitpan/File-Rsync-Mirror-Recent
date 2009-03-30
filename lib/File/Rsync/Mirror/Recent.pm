@@ -27,7 +27,7 @@ use Storable;
 use Time::HiRes qw();
 use YAML::Syck;
 
-use version; our $VERSION = qv('0.0.2');
+use version; our $VERSION = qv('0.0.3');
 
 =head1 SYNOPSIS
 
@@ -699,7 +699,7 @@ sub _fetch_as_tempfile {
     return $fh->filename;
 }
 
-=head1 $verbose = $obj->verbose ( $set )
+=head2 $verbose = $obj->verbose ( $set )
 
 Getter/setter method to set verbosity for this object and all
 associated Recentfile objects.
