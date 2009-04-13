@@ -1,3 +1,5 @@
+#!perl
+
 =head1 HOW TO MIRROR CPAN
 
 As of this writing the single purpose for this distribution is to
@@ -36,20 +38,23 @@ The loop is something like this:
     my @rrr = map {
         File::Rsync::Mirror::Recent->new
                 (
-                 ignore_link_stat_errors => 1,
-                 localroot => "/home/ftp/pub/PAUSE/$_", # your local path
-                 remote => "pause.perl.org::PAUSE/$_/RECENT.recent", # your upstream
-                 max_files_per_connection => 863,
-                 rsync_options =>
+                 ignore_link_stat_errors    => 1,
+                 localroot                  => "/home/ftp/pub/PAUSE/$_", # your local path
+                 remote                     => "pause.perl.org::PAUSE/$_/RECENT.recent", # your upstream
+                 max_files_per_connection   => 863,
+                 tempdir                    => "/home/ftp/tmp", # optional tempdir to hide temporary files
+                 ttl                        => 10,
+                 rsync_options              =>
                  {
-                  port => 8732, # only for PAUSE
-                  compress => 1,
-                  links => 1,
-                  times => 1,
-                  checksum => 0,
+                  port              => 8732, # only for PAUSE
+                  compress          => 1,
+                  links             => 1,
+                  times             => 1,
+                  checksum          => 0,
+                  'omit-dir-times'  => 1, # not available before rsync 3.0.3
                  },
-                 ttl => 10,
-                 verbose => 1,
+                 verbose                    => 1,
+                 verboselog                 => "/var/log/rmirror-pause.log",
                 )} "authors", "modules";
     die "directory $_ doesn't exist, giving up" for grep { ! -d $_->localroot } @rrr;
     while (){
@@ -102,6 +107,10 @@ and will adjust this recommendation according to our findings.
 Set the key 'verbose' to 0 if you have no debugging demands. In this
 case you want to omit the 'sleeping $sleep ...' noise further down the
 script as well.
+
+Set the key 'verboselog' to your favorite progress watcher file. This
+option is underdeveloped and may later be replaced with something
+better. Note that the program still sends error messages to STDERR.
 
 You can leave everything else as it stands. Start experimenting and
 let me know how it works out.

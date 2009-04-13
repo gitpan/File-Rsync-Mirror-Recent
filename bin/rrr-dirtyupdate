@@ -18,6 +18,11 @@ rrr-dirtyupdate - add a file with an old timestamp to the dataset
 
 my @opt = <<'=back' =~ /B<--(\S+)>/g;
 
+=item B<--delete>
+
+Inject a delete event. If the epoch argument is missing, find the
+according file event and set epoch to that epoch plus 1.
+
 =item B<--force|f>
 
 Force this run even without any arguments. E.g. just for the side
@@ -39,7 +44,8 @@ When you later discover missing files...
 
 The principalfile argument is the path to local principal recentfile.
 
-The file argument must be an existing file.
+The file argument is a relative path calculated from the localroot
+directory of the recentfile object.
 
 If the epoch argument is missing it is calculated from the
 modification time of the file.
@@ -55,7 +61,9 @@ use strict;
 use warnings;
 
 use File::Find qw(find);
+use lib "/home/k/sources/rersyncrecent/lib";
 use File::Rsync::Mirror::Recent;
+use File::Spec;
 use Getopt::Long;
 use Pod::Usage qw(pod2usage);
 
@@ -83,13 +91,25 @@ my($principal,$file,$epoch) = @ARGV;
 my $recc = File::Rsync::Mirror::Recent->new
     (local => $principal);
 my($rf) = $recc->principal_recentfile;
+my $abs_file = File::Spec->catfile($rf->localroot,$file);
 
 unless ($aggregate_only) {
     unless (defined $epoch) {
-        my(@stat) = stat $file or die "Could not stat '$file': $!";
-        $epoch = $stat[9];
+        if ($Opt{delete}) {
+            my $news = $recc->news(contains => { path => $file });
+            if (@$news) {
+                print "Found file:\n", YAML::Syck::Dump $news;
+                $epoch = $news->[0]{epoch} + 1;
+            } else {
+                die "didn't find '$file' in this recentfile collection";
+            }
+        } else {
+            my(@stat) = stat $abs_file or die "Could not stat '$abs_file': $!";
+            $epoch = $stat[9];
+        }
     }
-    $rf->update($file,"new",$epoch);
+    my $type = $Opt{delete} ? "delete" : "add";
+    $rf->update($abs_file,$type,$epoch);
 }
 warn localtime()." starting first aggregate\n";
 $rf->aggregate(force => 1);

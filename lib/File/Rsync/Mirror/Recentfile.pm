@@ -86,9 +86,10 @@ Aggregator (usually the writer):
 
 =head1 DESCRIPTION
 
-Lower level than F:R:M:Recent. Handles only one recentfile whereas a
-tree always is composed of several recentfiles. The single recentfile
-has to do the bookkeeping for a timeslice.
+Lower level than F:R:M:Recent, handles one recentfile. Whereas a tree
+is always composed of several recentfiles, controlled by the
+F:R:M:Recent object. The Recentfile object has to do the bookkeeping
+for a single timeslice.
 
 =head1 EXPORT
 
@@ -182,7 +183,17 @@ sub new_from_file {
 A simple unlock.
 
 =cut
-sub DESTROY { shift->unlock }
+sub DESTROY {
+    my $self = shift;
+    $self->unlock;
+    unless ($self->_current_tempfile_fh) {
+        if (my $tempfile = $self->_current_tempfile) {
+            if (-e $tempfile) {
+                unlink $tempfile; # may fail in global destruction
+            }
+        }
+    }
+}
 
 =head1 ACCESSORS
 
@@ -206,6 +217,7 @@ BEGIN {
                   "_remoteroot",
                   "_rfile",
                   "_rsync",
+                  "__verified_tempdir",
                   "_seeded",
                   "_uptodateness_ever_reached",
                   "_use_tempfile",
@@ -236,7 +248,8 @@ A timestamp. The dirtymark is updated whenever an out of band change
 on the origin server is performed that violates the protocol. Say,
 they add or remove files in the middle somewhere. Slaves must react
 with a devaluation of their C<done> structure which then leads to a
-full re-sync of all files.
+full re-sync of all files. Implementation note: dirtymark may increase
+or decrease.
 
 =item filenameroot
 
@@ -333,6 +346,12 @@ well. See section SERIALIZERS below.
 Sleep that many seconds (floating point OK) after every chunk of rsyncing
 has finished. Defaults to arbitrary 0.42.
 
+=item tempdir
+
+Directory to write temporary files to. Must allow rename operations
+into the tree which usually means it must live on the same partition
+as the target directory. Defaults to C<< $self->localroot >>.
+
 =item ttl
 
 Time to live. Number of seconds after which this recentfile must be
@@ -342,6 +361,12 @@ Defaults to arbitrary 24.2 seconds.
 =item verbose
 
 Boolean to turn on a bit verbosity.
+
+=item verboselog
+
+Path to the logfile to write verbose progress information to. This is
+a primitive stop gap solution to get simple verbose logging working.
+Switching to Log4perl or similar is probably the way to go.
 
 =back
 
@@ -534,9 +559,12 @@ sub get_remote_recentfile_as_tempfile {
     my $fh;
     my $trfilename;
     if ( $self->_use_tempfile() ) {
-        return $self->_current_tempfile if ! $self->ttl_reached;
-        $fh = $self->_current_tempfile_fh;
-        $trfilename = $self->rfilename;
+        if ($self->ttl_reached) {
+            $fh = $self->_current_tempfile_fh;
+            $trfilename = $self->rfilename;
+        } else {
+            return $self->_current_tempfile;
+        }
     } else {
         $trfilename = $self->rfilename;
     }
@@ -562,7 +590,8 @@ sub get_remote_recentfile_as_tempfile {
     if ($self->verbose) {
         my $doing = -e $dst ? "Sync" : "Get";
         my $display_dst = join "/", "...", basename(dirname($dst)), basename($dst);
-        printf STDERR
+        my $LFH = $self->_logfilehandle;
+        printf $LFH
             (
              "%-4s %d (1/1/%s) temp %s ... ",
              $doing,
@@ -585,7 +614,8 @@ sub get_remote_recentfile_as_tempfile {
         }
     }
     if ($gaveup) {
-        printf STDERR "Warning: gave up mirroring %s, will try again later", $self->interval;
+        my $LFH = $self->_logfilehandle;
+        printf $LFH "Warning: gave up mirroring %s, will try again later", $self->interval;
     } else {
         $self->_refresh_internals ($dst);
         $self->have_mirrored (Time::HiRes::time);
@@ -593,25 +623,55 @@ sub get_remote_recentfile_as_tempfile {
     }
     $self->unseed;
     if ($self->verbose) {
-        print STDERR "DONE\n";
+        my $LFH = $self->_logfilehandle;
+        print $LFH "DONE\n";
     }
     my $mode = 0644;
     chmod $mode, $dst or die "Could not chmod $mode '$dst': $!";
     return $dst;
 }
 
+sub _verified_tempdir {
+    my($self) = @_;
+    my $tempdir = $self->__verified_tempdir();
+    return $tempdir if defined $tempdir;
+    unless ($tempdir = $self->tempdir) {
+        $tempdir = $self->localroot;
+    }
+    unless (-d $tempdir) {
+        mkpath $tempdir;
+    }
+    $self->__verified_tempdir($tempdir);
+    return $tempdir;
+}
+
 sub _get_remote_rat_provide_tempfile_object {
     my($self, $trfilename) = @_;
+    my $_verified_tempdir = $self->_verified_tempdir;
     my $fh = File::Temp->new
         (TEMPLATE => sprintf(".FRMRecent-%s-XXXX",
                              $trfilename,
                             ),
-         DIR => $self->localroot,
+         DIR => $_verified_tempdir,
          SUFFIX => $self->serializer_suffix,
          UNLINK => $self->_use_tempfile,
         );
+    my $mode = 0644;
+    my $dst = $fh->filename;
+    chmod $mode, $dst or die "Could not chmod $mode '$dst': $!";
     if ($self->_use_tempfile) {
         $self->_current_tempfile_fh ($fh); # delay self destruction
+    }
+    return $fh;
+}
+
+sub _logfilehandle {
+    my($self) = @_;
+    my $fh;
+    if (my $vl = $self->verboselog) {
+        open $fh, ">>", $vl or die "Could not open >> '$vl': $!";
+    } else {
+        $fh = \*STDERR;
     }
     return $fh;
 }
@@ -636,7 +696,8 @@ sub get_remotefile {
     mkpath dirname $dst;
     if ($self->verbose) {
         my $doing = -e $dst ? "Sync" : "Get";
-        printf STDERR
+        my $LFH = $self->_logfilehandle;
+        printf $LFH
             (
              "%-4s %d (1/1/%s) %s ... ",
              $doing,
@@ -655,7 +716,8 @@ sub get_remotefile {
     }
     $self->un_register_rsync_error ();
     if ($self->verbose) {
-        print STDERR "DONE\n";
+        my $LFH = $self->_logfilehandle;
+        print $LFH "DONE\n";
     }
     return $dst;
 }
@@ -786,6 +848,13 @@ sub merge {
     my $other_recent = $other->recent_events || [];
     # $DB::single++ if $other->interval_secs eq "2" and grep {$_->{epoch} eq "999.999"} @$other_recent;
     $self->lock;
+    $self->_merge_locked ( $other, $other_recent );
+    $self->unlock;
+    $other->unlock;
+}
+
+sub _merge_locked {
+    my($self, $other, $other_recent) = @_;
     my $my_recent = $self->recent_events || [];
 
     # calculate the target time span
@@ -798,7 +867,7 @@ sub merge {
         $something_done = 1;
     }
     if ($epoch) {
-        if (_bigfloatgt($other->dirtymark, $self->dirtymark||0)) {
+        if (($other->dirtymark||0) ne ($self->dirtymark||0)) {
             $oldest_allowed = 0;
             $something_done = 1;
         } elsif (my $merged = $self->merged) {
@@ -838,8 +907,6 @@ sub merge {
     if ($something_done) {
         $self->_merge_something_done ($other_recent_filtered, $my_recent, $other_recent, $other, \%have_path, $epoch);
     }
-    $self->unlock;
-    $other->unlock;
 }
 
 sub _merge_something_done {
@@ -873,7 +940,7 @@ sub _merge_something_done {
             }
         }
     }
-    if (!$self->dirtymark || _bigfloatgt($other->dirtymark, $self->dirtymark)) {
+    if (!$self->dirtymark || $other->dirtymark ne $self->dirtymark) {
         $self->dirtymark ( $other->dirtymark );
     }
     $self->write_recent($recent);
@@ -1011,7 +1078,16 @@ sub mirror {
              \@error,
             );
         last if $i == $last_item;
-        return if $status->{mustreturn};
+        if ($status->{mustreturn}){
+            if ($self->_current_tempfile && ! $self->_current_tempfile_fh) {
+                # looks like a bug somewhere else
+                my $t = $self->_current_tempfile;
+                unlink $t or die "Could not unlink '$t': $!";
+                $self->_current_tempfile(undef);
+                $self->_use_tempfile(0);
+            }
+            return;
+        }
     }
     if (@dlcollector) {
         my $success = eval { $self->_mirror_dlcollector (\@dlcollector,$pathdb,$recent_events);};
@@ -1022,7 +1098,8 @@ sub mirror {
         }
     }
     if ($self->verbose) {
-        print STDERR "DONE\n";
+        my $LFH = $self->_logfilehandle;
+        print $LFH "DONE\n";
     }
     # once we've gone to the end we consider ourselves free of obligations
     $self->unseed;
@@ -1109,7 +1186,8 @@ sub _mirror_item_new {
       ) = @_;
     if ($self->verbose) {
         my $doing = -e $dst ? "Sync" : "Get";
-        printf STDERR
+        my $LFH = $self->_logfilehandle;
+        printf $LFH
             (
              "%-4s %d (%d/%d/%s) %s ... ",
              $doing,
@@ -1123,7 +1201,8 @@ sub _mirror_item_new {
     my $max_files_per_connection = $self->max_files_per_connection || 42;
     my $success;
     if ($self->verbose) {
-        print STDERR "\n";
+        my $LFH = $self->_logfilehandle;
+        print $LFH "\n";
     }
     push @$dlcollector, { rev => $recent_event, i => $i };
     if (@$dlcollector >= $max_files_per_connection) {
@@ -1144,7 +1223,8 @@ sub _mirror_item_new {
         sleep 1;
     }
     if ($self->verbose) {
-        print STDERR "DONE\n";
+        my $LFH = $self->_logfilehandle;
+        print $LFH "DONE\n";
     }
 }
 
@@ -1206,40 +1286,6 @@ sub _mirror_perform_delayed_ops {
     }
 }
 
-=head2 (void) $obj->mirror_loop
-
-Run mirror in an endless loop. See the accessor C<loopinterval>. XXX
-What happens/should happen if we miss the interval during a single loop?
-
-=cut
-
-sub mirror_loop {
-    my($self) = @_;
-    my $iteration_start = time;
-
-    my $Signal = 0;
-    $SIG{INT} = sub { $Signal++ };
-    my $loopinterval = $self->loopinterval || 42;
-    my $after = -999999999;
-  LOOP: while () {
-        $self->mirror($after);
-        last LOOP if $Signal;
-        my $re = $self->recent_events;
-        $after = $re->[0]{epoch};
-        if ($self->verbose) {
-            local $| = 1;
-            print "($after)";
-        }
-        if (time - $iteration_start < $loopinterval) {
-            sleep $iteration_start + $loopinterval - time;
-        }
-        if ($self->verbose) {
-            local $| = 1;
-            print "~";
-        }
-    }
-}
-
 =head2 $success = $obj->mirror_path ( $arrref | $path )
 
 If the argument is a scalar it is treated as a path. The remote path
@@ -1286,7 +1332,8 @@ sub mirror_path {
             my(@err) = $self->rsync->err;
             if ($self->ignore_link_stat_errors && "@err" =~ m{^ rsync: \s link_stat }x ) {
                 if ($self->verbose) {
-                    warn "Info: ignoring link_stat error '@err'";
+                    my $LFH = $self->_logfilehandle;
+                    print $LFH "Info: ignoring link_stat error '@err'";
                 }
                 return 1;
             }
@@ -1314,7 +1361,8 @@ sub mirror_path {
             my(@err) = $self->rsync->err;
             if ($self->ignore_link_stat_errors && "@err" =~ m{^ rsync: \s link_stat }x ) {
                 if ($self->verbose) {
-                    warn "Info: ignoring link_stat error '@err'";
+                    my $LFH = $self->_logfilehandle;
+                    print $LFH "Info: ignoring link_stat error '@err'";
                 }
                 return 1;
             }
@@ -1378,11 +1426,11 @@ timestamp are returned.
 If C<$options{before}> is specified, only file events before this
 timestamp are returned.
 
-IF C<$options{'skip-deletes'}> is specified, no files-to-be-deleted
-will be returned.
-
 If C<$options{max}> is specified only a maximum of this many events is
 returned.
+
+If C<$options{'skip-deletes'}> is specified, no files-to-be-deleted
+will be returned.
 
 If C<$options{contains}> is specified the value must be a hash
 reference containing a query. The query may contain the keys C<epoch>,
@@ -1427,10 +1475,11 @@ sub recent_events {
              $rfile_or_tempfile,
             );
     }
-    return $re unless grep {defined $options{$_}} qw(after before max);
+    return $re unless grep {defined $options{$_}} qw(after before contains max);
     $self->_recent_events_handle_options ($re, \%options);
 }
 
+# File::Rsync::Mirror::Recentfile::_recent_events_handle_options
 sub _recent_events_handle_options {
     my($self, $re, $options) = @_;
     my $last_item = $#$re;
@@ -1551,9 +1600,10 @@ sub _refresh_internals {
     }
     my $old_dirtymark = $self->dirtymark;
     my $new_dirtymark = $rfpeek->dirtymark;
-    if ($old_dirtymark && $new_dirtymark && _bigfloatgt($new_dirtymark,$old_dirtymark)) {
+    if ($old_dirtymark && $new_dirtymark && $new_dirtymark ne $old_dirtymark) {
         $self->done->reset;
         $self->dirtymark ( $new_dirtymark );
+        $self->_uptodateness_ever_reached(0);
         $self->seed;
     }
 }
@@ -1620,7 +1670,7 @@ sub remoteroot {
     return $remoteroot;
 }
 
-=head2 (void) $obj->resolve_recentfilename ( $recentfilename )
+=head2 (void) $obj->split_rfilename ( $recentfilename )
 
 Inverse method to C<rfilename>. C<$recentfilename> is a plain filename
 of the pattern
@@ -1636,7 +1686,7 @@ object itself.
 
 =cut
 
-sub resolve_recentfilename {
+sub split_rfilename {
     my($self, $rfname) = @_;
     my($splitter) = qr(^(.+)-([^-\.]+)(\.[^\.]+));
     if (my($f,$i,$s) = $rfname =~ $splitter) {
@@ -1769,6 +1819,7 @@ sub _sparse_clone {
                   rsync_options
                   serializer_suffix
                   sleep_per_connection
+                  tempdir
                   verbose
                  )) {
         my $o = $self->$m;
@@ -1838,9 +1889,9 @@ not-so-current file into the dataset, then the caller sets
 $dirty_epoch. This causes the epoch of the registered event to become
 $dirty_epoch or -- if the exact value given is already taken -- a tiny
 bit more. As compensation the dirtymark of the whole dataset is set to
-the current epoch. Note: setting the dirty_epoch to the future is
-prohibited as it's very unlikely to be intended: it definitely might
-wreak havoc with the index files.
+now or the current epoch, whichever is higher. Note: setting the
+dirty_epoch to the future is prohibited as it's very unlikely to be
+intended: it definitely might wreak havoc with the index files.
 
 The new file event is unshifted (or, if dirty_epoch is set, inserted
 at the place it belongs to, according to the rule to have a sequence
@@ -1897,8 +1948,8 @@ sub update {
     my $oldest_allowed = 0;
     my $merged = $self->merged;
     if ($merged->{epoch}) {
-        my $virtualnow = max($now,$epoch);
-        # for the lower bound could we need big math?
+        my $virtualnow = _bigfloatmax($now,$epoch);
+        # for the lower bound I think we need no big math, we calc already
         $oldest_allowed = min($virtualnow - $secs, $merged->{epoch}, $epoch);
     } else {
         # as long as we are not merged at all, no limits!
@@ -1924,7 +1975,7 @@ sub update {
             $epoch     = $ctx->{epoch};
             my $dirtymark = $self->dirtymark;
             my $new_dm = $now;
-            if (_bigfloatgt($epoch, $now)) {
+            if (_bigfloatgt($epoch, $now)) { # just in case we had to increase it
                 $new_dm = $epoch;
             }
             $self->dirtymark($new_dm);
@@ -2045,7 +2096,7 @@ sub uptodate {
         my $minmax = $self->minmax;
         if (exists $minmax->{mtime}) {
             my $rfile = $self->_my_current_rfile;
-            my @stat = stat $rfile;
+            my @stat = stat $rfile or die "Could not stat '$rfile': $!";
             my $mtime = $stat[9];
             if (defined $mtime && defined $minmax->{mtime} && $mtime > $minmax->{mtime}) {
                 $why = "mtime[$mtime] of rfile[$rfile] > minmax/mtime[$minmax->{mtime}], so we are not uptodate";
@@ -2155,8 +2206,9 @@ sub write_1 {
 }
 
 BEGIN {
+    my $nq = qr/[^"]+/; # non-quotes
     my @pod_lines = 
-        split /\n/, <<'=cut'; %serializers = map { eval } grep {s/^=item\s+C<<(.+)>>$/$1/} @pod_lines; }
+        split /\n/, <<'=cut'; %serializers = map { my @x = /"($nq)"\s+=>\s+"($nq)"/; @x } grep {s/^=item\s+C<<\s+(.+)\s+>>$/$1/} @pod_lines; }
 
 =head1 SERIALIZERS
 
@@ -2187,7 +2239,7 @@ An interval spec is a primitive way to express time spans. Normally it
 is composed from an integer and a letter.
 
 As a special case, a string that consists only of the single letter
-C<Z>, stands for unlimited time.
+C<Z>, stands for MAX_INT seconds.
 
 The following letters express the specified number of seconds:
 

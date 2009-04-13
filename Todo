@@ -1,3 +1,108 @@
+2009-04-13  Andreas J. Koenig  <andk@cpan.org>
+
+	* Study http://en.wikipedia.org/wiki/Magnet_URI_scheme
+
+	* is it true (as stated at
+	https://fedorahosted.org/InstantMirror/wiki/ExistingRepositoryReplicationMethods)
+	that rsync can lead to errors when upstream changes before client sync
+	has completed? Can we see the error when we run this on upstream:
+
+% perl -e '
+use Time::HiRes qw(time);
+while (){
+  open my $fh, ">", "changingfile.txt.new" or die;
+  print $fh (time."\n") x 1000000;
+  close $fh;
+  rename "changingfile.txt.new", "changingfile.txt" or die;
+}
+'
+
+	And on the receiving end:
+
+% while true; do
+rsync k75:`pwd`/changingfile.txt .; cat changingfile.txt| uniq|wc -l
+sleep 1;
+done
+
+	I cannot get it to fail. Apparently it is sufficient when upstream
+	always writes atomically (which of course is mandatory)?
+
+	* from ABH:
+
+> https://fedorahosted.org/InstantMirror/
+> https://www.redhat.com/mailman/listinfo/instantmirror-list
+> irc.freenode.net channel #instantmirror
+
+	A cool name for a project. Inspires me to write a few sentences about
+	bittorrent's role in the grand picture.
+
+	http://spreadsheets.google.com/pub?key=pGlWX10blP4u2kM05SDtiMg is a
+	spreadsheet collected by Atul Aggarwal about bittorrent implementations.
+	
+2009-04-12  Andreas J. Koenig  <andk@cpan.org>
+
+	* Interesting last minute bug during real download testing: the output
+	isn't as pretty anymore, it seems that more work is being done than
+	needed.
+
+	Introducing a highlevel _alluptodate method helped a lot in debugging
+	this.
+
+	FIXED now. Reason was that dirtymark on PAUSE currently is broken; it's
+	different on 1h file than on the other files. This lead to frequent
+	calls to _fullseed. Limiting the dirtymark check to $i==0 resolved the
+	issue.
+
+2009-04-12  Andreas J. Koenig  <andreas.koenig.7os6VVqR@franz.ak.mind.de>
+
+	* Todo: try if we can be faster with a native float package. I'm really
+	glad to have a machine exposing perl floating point bugs, it forced me
+	to retract this item from the changes file: "several speedups in the
+	fakebigfloat code" before I get cpan testers fails.
+
+2009-04-11  Andreas J. Koenig  <andk@cpan.org>
+
+	* Bug: when the dirtymark changes upstream, then the downstream server
+	notices it immediately and mirrors the "1h" file but then leaves the
+	rmirror loop and continues with "6h" on the next round through. This
+	behaviour goes on until it reaches the Z file. Because we eat the Z file
+	piecemeal we leave the loop after a while but after that everybody seems
+	to have forgotten that there is some work left to be done. Bad, bad,
+	bad.
+
+	ETOOCONFUSING                                         better name?
+
+	Recentfile::get_remote_recentfile_as_tempfile         OK
+	Recentfile::resolve_recentfilename                    split_rfilename  DONE
+
+	Recent::_principal_recentfile_object	                _principal_recentfile_fromremote
+	Recent::principal_recentfile                          OK
+	Recent::_resolve_rfilename                            _principal_recentfile_fromremote_resosymlink
+
+	some void, some not, some not void but called in void context.
+
+2009-04-10  Andreas J. Koenig  <andk@cpan.org>
+
+	* Todo: rename rrr-dirtyupdate to rrr-update and add an option --dirty
+	so we can use it for normal update with a single file.
+
+	* Bug? When the dirtymark changes then the second tier hosts quickly
+	reset their DONE state and restart mirroring. But then they mirror
+	potentially outdated index files with inconsistent dirtymark because the
+	first tier box may be a bit behind on the large recentfiles.
+
+	This means we need a brake when iterating over the recentfiles that
+	refuses to use a recentfile with the wrong dirtymark.
+
+2009-04-08  Andreas J. Koenig  <andreas.koenig.7os6VVqR@franz.ak.mind.de>
+
+	* install the bin/* files and talk about rrr-overview somewhere.
+
+	* Ask B. Hansen asks for tempdir accessor such that tempfiles get
+	created outside the target tree.
+
+	* Barbie asks for better logging capabilities
+
 2009-03-29  Andreas J. Koenig  <andk@cpan.org>
 
 	* known bug: cannot configure the Recentfile objects to keep delete
@@ -13,7 +118,7 @@
 
 	for ( @{$rrr->recentfiles} ) { $_->verbose(0) }
 
-	?
+	? DONE
 
 2009-03-22  Andreas J. Koenig  <andk@cpan.org>
 
@@ -38,7 +143,7 @@
 2009-03-21  Andreas J. Koenig  <andk@cpan.org>
 
 	* Bug?: should it be harder than it is atm to set the timestamp to the
-	future?
+	future? YES, FIXED
 
 	* bug with native integers:
   

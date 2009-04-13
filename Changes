@@ -1,3 +1,22 @@
+2009-04-13  Andreas J. Koenig  <andk@cpan.org>
+
+	* release 0.0.4
+
+	* new accessor C<tempdir> (suggested by Ask Bjørn Hansen)
+
+	* new accessor C<verboselog> (suggested by Barbie)
+
+	* bugfix: not all tempfiles were cleaned up correctly
+
+	* bugfix: fixed a panic 'Could not find an interval position ...' in the Done code
+
+	* bugfix: changes of the dirtymark were insufficiently discovered on the slave
+
+	* bugfix: Recentfile::recent_events now honours the C<contains> option
+	correctly
+
+	* changed several internal method and variable names
+
 2009-03-30  Andreas J. Koenig  <andk@cpan.org>
 
 	* release 0.0.3
@@ -24,6 +43,7 @@
 
 	
 	Local Variables:
+	coding: utf-8
 	mode: change-log
 	change-log-default-name: "Changes"
 	tab-width: 2

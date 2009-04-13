@@ -27,7 +27,7 @@ use Storable;
 use Time::HiRes qw();
 use YAML::Syck;
 
-use version; our $VERSION = qv('0.0.3');
+use version; our $VERSION = qv('0.0.4');
 
 =head1 SYNOPSIS
 
@@ -48,7 +48,7 @@ ARCHITECTURE OF A COLLECTION OF RECENTFILES below.
 
 File::Rsync::Mirror::Recent establishes a view on a collection of
 File::Rsync::Mirror::Recentfile objects and provides abstractions
-spanning multiple intervals associated with those.
+spanning multiple time intervals associated with those.
 
 =head1 EXPORT
 
@@ -83,6 +83,9 @@ BEGIN {
     @accessors =
         (
          "__pathdb",
+         "_dirtymark",            # keeps track of the dirtymark of the recentfiles
+         "_logfilefordone",       # turns on _logfile on all DONE
+                                  # systems (disk intensive)
          "_max_one_state",        # when we have no time left but want
                                   # at least get one file per
                                   # iteration to avoid procrastination
@@ -90,8 +93,8 @@ BEGIN {
          "_recentfiles",
          "_rsync",
          "_runstatusfile",        # frequenty dumps all rfs
-         "_logfilefordone",       # turns on _logfile on all DONE
-                                  # systems (disk intensive)
+         "_verbose",              # internal variable for verbose setter/getter
+         "_verboselog",           # internal variable for verboselog setter/getter
         );
 
     my @pod_lines =
@@ -118,11 +121,13 @@ as in F:R:M:Recentfile
 
 =item remote
 
-TBD
+The remote principal recentfile in rsync notation. E.g.
+
+  pause.perl.org::authors/RECENT.recent
 
 =item remoteroot
 
-XXX: this is (ATM) different from Recentfile!!!
+as in F:R:M:Recentfile
 
 =item remote_recentfile
 
@@ -134,14 +139,13 @@ the principal remote recentfile has.
 Things like compress, links, times or checksums. Passed in to the
 File::Rsync object used to run the mirror.
 
+=item tempdir
+
+as in F:R:M:Recentfile
+
 =item ttl
 
 Minimum time before fetching the principal recentfile again.
-
-=item _verbose
-
-Boolean to turn on a bit verbosity. Use the method C<verbose> to also
-set the verbosity of associated Recentfile objects.
 
 =back
 
@@ -356,17 +360,58 @@ sub _pathdb {
 
 =head2 $recentfile = $obj->principal_recentfile ()
 
-returns the principal recentfile of this tree.
+returns the principal recentfile object of this tree.
 
 =cut
-
+# mirrors the recentfile and instantiates the recentfile object
+sub _principal_recentfile_fromremote {
+    my($self) = @_;
+    # get the remote recentfile
+    my $rrfile = $self->remote or die "Alert: cannot construct a recentfile object without the 'remote' attribute";
+    my $splitter = qr{(.+)/([^/]*)};
+    my($remoteroot,$rfilename) = $rrfile =~ $splitter;
+    $self->remoteroot($remoteroot);
+    my($abslfile, $fh);
+    if (!defined $rfilename) {
+        die "Alert: Cannot resolve '$rrfile', does not match $splitter";
+    } elsif (not length $rfilename or $rfilename eq "RECENT.recent") {
+        ($abslfile,$rfilename,$fh) = $self->_principal_recentfile_fromremote_resosymlink($rfilename);
+    }
+    my @need_args =
+        (
+         "ignore_link_stat_errors",
+         "localroot",
+         "max_files_per_connection",
+         "remoteroot",
+         "rsync_options",
+         "tempdir",
+         "ttl",
+         "verbose",
+         "verboselog",
+        );
+    my $rf0;
+    unless ($abslfile) {
+        $rf0 = File::Rsync::Mirror::Recentfile->new (map {($_ => $self->$_)} @need_args);
+        $rf0->split_rfilename($rfilename);
+        $abslfile = $rf0->get_remote_recentfile_as_tempfile ();
+    }
+    $rf0 = File::Rsync::Mirror::Recentfile->new_from_file ( $abslfile );
+    $rf0->_current_tempfile ( $abslfile );
+    $rf0->_current_tempfile_fh ( $fh );
+    $rf0->_use_tempfile (1);
+    for my $override (@need_args) {
+        $rf0->$override ( $self->$override );
+    }
+    $rf0->is_slave (1);
+    return $rf0;
+}
 sub principal_recentfile {
     my($self) = @_;
-    my $prince = $self->_principal_recentfile;
-    return $prince if defined $prince;
+    my $rf0 = $self->_principal_recentfile;
+    return $rf0 if defined $rf0;
     my $local = $self->local;
     if ($local) {
-        $prince = File::Rsync::Mirror::Recentfile->new_from_file ($local);
+        $rf0 = File::Rsync::Mirror::Recentfile->new_from_file ($local);
     } else {
         if (my $remote = $self->remote) {
             my $localroot;
@@ -375,14 +420,13 @@ sub principal_recentfile {
             } else {
                 die "FIXME: remote called without localroot should trigger File::Temp.... TBD, sorry";
             }
-            my $rf0 = $self->_recentfile_object_for_remote;
-            $prince = $rf0;
+            $rf0 = $self->_principal_recentfile_fromremote;
         } else {
             die "Alert: neither local nor remote specified, cannot continue";
         }
     }
-    $self->_principal_recentfile($prince);
-    return $prince;
+    $self->_principal_recentfile($rf0);
+    return $rf0;
 }
 
 =head2 $recentfiles_arrayref = $obj->recentfiles ()
@@ -470,10 +514,37 @@ Or try without the loop parameter and write the loop yourself:
 
 
 =cut
+# _alluptodate is unused but at least it worked last time I needed it,
+# so let us keep it around
+sub _alluptodate {
+    my($self) = @_;
+    my $sdm = $self->_dirtymark;
+    return unless defined $sdm;
+    for my $rf (@{$self->recentfiles}) {
+        return if $rf->seeded;
+        my $rfdm = $rf->dirtymark;
+        return unless defined $rfdm;
+        return unless $rfdm eq $sdm;
+        my $done = $rf->done;
+        return unless defined $done;
+        my $done_intervals = $done->_intervals;
+        return if !defined $done_intervals;
+        # nonono, may be more than one, only covered it must be:
+        # return if @$done_intervals > 1;
+        my $minmax = $rf->minmax;
+        return unless defined $minmax;
+        return unless $done->covered(@$minmax{qw(max min)});
+    }
+    # $DB::single++;
+    return 1;
+}
+sub _fullseed {
+    my($self) = @_;
+    for ( @{$self->recentfiles} ) { $_->seed(1) }
+}
 sub rmirror {
     my($self, %options) = @_;
 
-    # my $rf0 = $self->_recentfile_object_for_remote;
     my $rfs = $self->recentfiles;
 
     my $_every_20_seconds = sub {
@@ -483,12 +554,31 @@ sub rmirror {
     my $_sigint = sub {
         # XXX exit gracefully (reminder)
     };
-    my $minimum_time_per_loop = 20; # XXX needs accessor: warning, if
-                                    # set too low, we do nothing but
-                                    # mirror the principal!
+
+    # XXX needs accessor: warning, if set too low, we do nothing but
+    # mirror the principal!
+    my $minimum_time_per_loop = 20;
+
     if (my $logfile = $self->_logfilefordone) {
         for my $i (0..$#$rfs) {
             $rfs->[$i]->done->_logfile($logfile);
+        }
+    }
+    if (my $dirtymark = $self->principal_recentfile->dirtymark) {
+        my $mydm = $self->_dirtymark;
+        if (!defined $mydm){
+            $self->_dirtymark($dirtymark);
+        } elsif ($dirtymark ne $mydm) {
+            if ($self->verbose) {
+                my $fh;
+                if (my $vl = $self->verboselog) {
+                    open $fh, ">>", $vl or die "Could not open >> '$vl': $!";
+                } else {
+                    $fh = \*STDERR;
+                }
+                print $fh "NewDirtymark: old[$mydm] new[$dirtymark]\n";
+            }
+            $self->_dirtymark($dirtymark);
         }
     }
   LOOP: while () {
@@ -510,15 +600,17 @@ sub rmirror {
                 }
                 # no further seed necessary because "every_20_seconds" does it
                 next RECENTFILE;
-            } else {
-              WORKUNIT: while (time < $ttleave) {
-                    if ($rf->uptodate) {
-                        $self->_rmirror_sleep_per_connection ($i);
-                        next RECENTFILE;
-                    } else {
-                        $self->_rmirror_mirror ($i, \%options);
-                    }
+            }
+        WORKUNIT: while (time < $ttleave) {
+                if ($rf->uptodate) {
+                    $self->_rmirror_sleep_per_connection ($i);
+                    next RECENTFILE;
+                } else {
+                    $self->_rmirror_mirror ($i, \%options);
                 }
+            }
+            if ($self->_max_one_state) {
+                last RECENTFILE;
             }
         }
         $self->_max_one_state(0);
@@ -549,6 +641,17 @@ sub _rmirror_mirror {
     }
     $locopt{piecemeal} = 1;
     $rf->mirror (%locopt);
+    if ($i==0) {
+        # we limit to 0 for the case that upstream is broken and has
+        # more than one timestamp (happened on PAUSE 200903)
+        if (my $dirtymark = $rf->dirtymark) {
+            my $mydm = $self->_dirtymark;
+            if (!defined $mydm or $dirtymark ne $mydm) {
+                $self->_dirtymark($dirtymark);
+                $self->_fullseed;
+            }
+        }
+    }
 }
 
 sub _rmirror_sleep_per_connection {
@@ -556,7 +659,7 @@ sub _rmirror_sleep_per_connection {
     my $rfs = $self->recentfiles;
     my $rf = $rfs->[$i];
     my $sleep = $rf->sleep_per_connection;
-    $sleep = 0.42 unless defined $sleep; # XXX accessor!
+    $sleep = 0.42 unless defined $sleep;
     Time::HiRes::sleep $sleep;
     $rfs->[$i+1]->done->merge($rf->done) if $i < $#$rfs;
 }
@@ -598,7 +701,13 @@ sub _rmirror_runstatusfile {
 sub _rmirror_endofloop_sleep {
     my($self, $sleep) = @_;
     if ($self->verbose) {
-        printf STDERR
+        my $fh;
+        if (my $vl = $self->verboselog) {
+            open $fh, ">>", $vl or die "Could not open >> '$vl': $!";
+        } else {
+            $fh = \*STDERR;
+        }
+        printf $fh
             (
              "Dorm %d (%s secs)\n",
              time,
@@ -608,51 +717,17 @@ sub _rmirror_endofloop_sleep {
     }
 }
 
-# mirrors the recentfile and instantiates the recentfile object
-sub _recentfile_object_for_remote {
-    my($self) = @_;
-    # get the remote recentfile
-    my $rrfile = $self->remote or die "Alert: cannot construct a recentfile object without the 'remote' attribute";
-    my $splitter = qr{(.+)/([^/]*)};
-    my($remoteroot,$rfilename) = $rrfile =~ $splitter;
-    $self->remoteroot($remoteroot);
-    my $abslfile;
-    if (!defined $rfilename) {
-        die "Alert: Cannot resolve '$rrfile', does not match $splitter";
-    } elsif (not length $rfilename or $rfilename eq "RECENT.recent") {
-        ($abslfile,$rfilename) = $self->_resolve_rfilename($rfilename);
-    }
-    my @need_args =
-        (
-         "ignore_link_stat_errors",
-         "localroot",
-         "max_files_per_connection",
-         "remoteroot",
-         "rsync_options",
-         "verbose",
-         "ttl",
-        );
-    my $rf0;
-    unless ($abslfile) {
-        $rf0 = File::Rsync::Mirror::Recentfile->new (map {($_ => $self->$_)} @need_args);
-        $rf0->resolve_recentfilename($rfilename);
-        $abslfile = $rf0->get_remote_recentfile_as_tempfile ();
-    }
-    $rf0 = File::Rsync::Mirror::Recentfile->new_from_file ( $abslfile );
-    for my $override (@need_args) {
-        $rf0->$override ( $self->$override );
-    }
-    $rf0->is_slave (1);
-    return $rf0;
-}
-
-sub _resolve_rfilename {
+# it returns two things: abslfile and rfilename. But the abslfile is
+# undef when the rfilename ends in .recent. A weird interface, my
+# friend.
+sub _principal_recentfile_fromremote_resosymlink {
     my($self, $rfilename) = @_;
     $rfilename = "RECENT.recent" unless length $rfilename;
     my $abslfile = undef;
+    my $fh;
     if ($rfilename =~ /\.recent$/) {
         # may be a file *or* a symlink, 
-        $abslfile = $self->_fetch_as_tempfile ($rfilename);
+        ($abslfile,$fh) = $self->_fetch_as_tempfile ($rfilename);
         while (-l $abslfile) {
             my $symlink = readlink $abslfile;
             if ($symlink =~ m|/|) {
@@ -670,14 +745,17 @@ sub _resolve_rfilename {
             } else {
                 rename $abslfile, $localrfile or die "Cannot rename to '$localrfile': $!";
             }
-            $abslfile = $self->_fetch_as_tempfile ($symlink);
+            ($abslfile,$fh) = $self->_fetch_as_tempfile ($symlink);
         }
     }
-    return ($abslfile, $rfilename);
+    return ($abslfile, $rfilename, $fh);
 }
 
 # takes a basename, returns an absolute name, does not delete the
 # file, throws the $fh away. Caller must rename or unlink
+
+# XXX needs to activate the fh in the rf0 so that it is able to unlink
+# the file. I would like that the file is used immediately by $rf0
 sub _fetch_as_tempfile {
     my($self, $rfile) = @_;
     my($suffix) = $rfile =~ /(\.[^\.]+)$/;
@@ -686,23 +764,32 @@ sub _fetch_as_tempfile {
         (TEMPLATE => sprintf(".FRMRecent-%s-XXXX",
                              $rfile,
                             ),
-         DIR => $self->localroot,
+         DIR => $self->tempdir || $self->localroot,
          SUFFIX => $suffix,
          UNLINK => 0,
         );
-    my $rsync = File::Rsync->new($self->rsync_options);
+    my $rsync;
+    unless ($rsync = File::Rsync->new($self->rsync_options)) {
+        require Carp;
+        Carp::confess(YAML::Syck::Dump($self->rsync_options));
+    }
+    my $dst = $fh->filename;
     $rsync->exec
         (
          src => join("/",$self->remoteroot,$rfile),
-         dst => $fh->filename,
+         dst => $dst,
         ) or die "Could not mirror '$rfile' to $fh\: ".join(" ",$rsync->err);
-    return $fh->filename;
+    unless (-l $dst) {
+        my $mode = 0644;
+        chmod $mode, $dst or die "Could not chmod $mode '$dst': $!";
+    }
+    return($dst,$fh);
 }
 
 =head2 $verbose = $obj->verbose ( $set )
 
-Getter/setter method to set verbosity for this object and all
-associated Recentfile objects.
+Getter/setter method to set verbosity for this F:R:M:Recent object and
+all associated Recentfile objects.
 
 =cut
 sub verbose {
@@ -718,6 +805,30 @@ sub verbose {
     }
     return $x;
     
+}
+
+=head2 my $vl = $obj->verboselog ( $set )
+
+Getter/setter method for the path to the logfile to write verbose
+progress information to.
+
+Note: This is a primitive stop gap solution to get simple verbose
+logging working. The program still sends error messages to STDERR.
+Switching to Log4perl or similar is probably the way to go. TBD.
+
+=cut
+sub verboselog {
+    my($self,$set) = @_;
+    if (defined $set) {
+        for ( @{$self->recentfiles} ) { $_->verboselog($set) }
+        $self->_verboselog ($set);
+    }
+    my $x = $self->_verboselog;
+    unless (defined $x) {
+        $x = 0;
+        $self->_verboselog ($x);
+    }
+    return $x;
 }
 
 =head1 THE ARCHITECTURE OF A COLLECTION OF RECENTFILES
@@ -737,6 +848,7 @@ neither necessary nor enforced. That's the basic idea. The following
 example represents a tree that has a few updates every day:
 
  RECENT.recent -> RECENT-1h.yaml
+ RECENT-1h.yaml
  RECENT-6h.yaml
  RECENT-1d.yaml
  RECENT-1M.yaml
@@ -752,11 +864,8 @@ C<.recent>. On systems that do not support symlinks there is a plain
 copy maintained instead.
 
 The last file, the Z file, contains the complementary files that are
-in none of the other files. It does never contain C<deletes>. Besides
-this it serves the role of a recovery mechanism or spill over pond.
-When things go wrong, it's a valuable controlling instance to hold the
-differences between the collection of limited interval files and the
-actual filesystem.
+in none of the other files. It may contain C<delete> events but often
+C<delete> events are discarded at the transition to the Z file.
 
 =head2 THE INDIVIDUAL RECENTFILE
 
@@ -767,10 +876,10 @@ list of fileobjects.
 =head2 THE META PART
 
 Here we find things that are pretty much self explaining: all
-lowercase attributes are accessors and as such explained somewhere
-above in this manpage. The uppercase attribute C<Producers> contains
-version information about involved software components. Nothing to
-worry about as I believe.
+lowercase attributes are accessors and as such explained in the
+manpages. The uppercase attribute C<Producers> contains version
+information about involved software components. Nothing to worry about
+as I believe.
 
 =head2 THE RECENT PART
 
@@ -803,9 +912,11 @@ guarantee they are unique.
 =head1 CORRUPTION AND RECOVERY
 
 If the origin host breaks the promise to deliver consistent and
-complete I<recentfiles> then the way back to sanity shall be achieved
-through traditional rsyncing between the hosts. But don't forget to
-report it as a bug:)
+complete I<recentfiles> then it must update its C<dirtymark> and all
+slaves must discard what they cosider the truth. In the worst case
+that something goes wrong despite the dirtymark mechanism the way back
+to sanity can always be achieved through traditional rsyncing between
+the hosts.
 
 =head1 BACKGROUND
 
@@ -835,40 +946,56 @@ Normally it takes a long time to determine the diff itself before it
 can be transferred. Known solutions at the time of this writing are
 csync2, and rsync 3 batch mode.
 
-For many years the best solution was csync2 which solves the problem
-by maintaining a sqlite database on both ends and talking a highly
-sophisticated protocol to quickly determine which files to send and
-which to delete at any given point in time. Csync2 is often
+For many years the best solution was B<csync2> which solves the
+problem by maintaining a sqlite database on both ends and talking a
+highly sophisticated protocol to quickly determine which files to send
+and which to delete at any given point in time. Csync2 is often
 inconvenient because it is push technology and the act of syncing
 demands quite an intimate relationship between the sender and the
 receiver. This is hard to achieve in an environment of loosely coupled
-sites where the number of sites is large or connections are
-unreliable or network topology is changing.
+sites where the number of sites is large or connections are unreliable
+or network topology is changing.
 
-Rsync 3 batch mode works around these problems by providing rsync-able
-batch files which allow receiving nodes to replay the history of the
-other nodes. This reduces the need to have an incestuous relation but
-it has the disadvantage that these batch files replicate the contents
-of the involved files. This seems inappropriate when the nodes already
-have a means of communicating over rsync.
+B<Rsync 3 batch mode> works around these problems by providing
+rsync-able batch files which allow receiving nodes to replay the
+history of the other nodes. This reduces the need to have an
+incestuous relation but it has the disadvantage that these batch files
+replicate the contents of the involved files. This seems inappropriate
+when the nodes already have a means of communicating over rsync.
+
+B<instantmirror> at https://fedorahosted.org/InstantMirror/ is an
+ambitious project that tries to combine various technologies to
+overcome the current situation. It's been founded in 2009-03 and at
+the time of this writing it is still a bit early to comment on.
 
 rersyncrecent solves this problem with a couple of (usually 2-10)
-index files which cover different overlapping time intervals. The
-master writes these files and the clients/slaves can construct the
-full tree from the information contained in them. The most recent
-index file usually covers the last seconds or minutes or hours of the
-tree and depending on the needs, slaves can rsync every few seconds or
-minutes and then bring their trees in full sync.
+lightweight index files which cover different overlapping time
+intervals. The master writes these files and the clients/slaves can
+construct the full tree from the information contained in them. The
+most recent index file usually covers the last seconds or minutes or
+hours of the tree and depending on the needs, slaves can rsync every
+few seconds or minutes and then bring their trees in full sync.
 
-The rersyncrecent mode was developed for CPAN but I hope it is a
-convenient and economic general purpose solution. I'm looking forward
-to see a CPAN backbone that is only a few seconds behind PAUSE. And
-then ... the first FUSE based CPAN filesystem anyone?
+The rersyncrecent mode was developed for CPAN but as it is convenient
+and economic it is also a general purpose solution. I'm looking
+forward to see a CPAN backbone that is only a few seconds behind
+PAUSE. And then ... the first FUSE based CPAN filesystem anyone?
+
+=head1 LIMITATIONS
+
+If the tree of the master server is changing faster than the bandwidth
+permits to mirror then additional protocols may need to be deployed.
+Certainly p2p/bittorrent can help in such situations because
+downloading sites help each other and bittorrent chunks large files
+into pieces.
 
 =head1 FUTURE DIRECTIONS
 
 Currently the origin server must keep track of injected and removed
 files. Should be supported by an inotify-based assistant.
+
+Convince other users outside the CPAN like
+http://fedoraproject.org/wiki/Infrastructure/Mirroring
 
 =head1 SEE ALSO
 

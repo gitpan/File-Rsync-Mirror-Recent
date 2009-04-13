@@ -89,7 +89,22 @@ otherwise false.
 The second form returns true if this timestamp has been registered.
 
 =cut
-
+sub _is_sorted {
+    my($self,$ivs) = @_;
+    my $Lup;
+    my $is_sorted = 1;
+    for my $i (0..$#$ivs) {
+        if (defined $Lup) {
+            if (_bigfloatge ($ivs->[$i][0],$Lup)) {
+                warn "Warning (may be harmless): F:R:M:R:Done object contains unsorted internal data";
+                $DB::single++;
+                return 0;
+            }
+        }
+        $Lup = $ivs->[$i][0];
+    }
+    return $is_sorted;
+}
 sub covered {
     my($self, $epoch_high, $epoch_low) = @_;
     die "Alert: covered() called without or with undefined first argument" unless defined $epoch_high;
@@ -98,6 +113,7 @@ sub covered {
     if (defined $epoch_low) {
         ($epoch_high,$epoch_low) = ($epoch_low,$epoch_high) if _bigfloatgt($epoch_low,$epoch_high);
     }
+    my $is_sorted = $self->_is_sorted($intervals);
     for my $iv (@$intervals) {
         my($upper,$lower) = @$iv; # may be the same
         if (defined $epoch_low) {
@@ -108,7 +124,13 @@ sub covered {
             }
             return 1 if $goodbound > 1;
         } else {
-            return 1 if _bigfloatle($epoch_high,$upper) && _bigfloatge($epoch_high, $lower); # "between"
+            if ( _bigfloatle ( $epoch_high, $upper ) ) {
+                if ( _bigfloatge ( $epoch_high, $lower )) {
+                    return 1; # "between"
+                }
+            } elsif ($is_sorted) {
+                return 0; # no chance anymore
+            }
         }
     }
     return 0;
@@ -308,18 +330,46 @@ sub _register_one_fold2 {
        $intervals,
        $epoch,
       ) = @_;
-    my $splicepos;
+    # we know we have hit twice, like in
+    # 40:[45,40],        [40,35]
+    # 40:[45,40],[42,37],[40,35]
+    # 45:[45,40],        [45,35]
+    # 45:[45,40],[42,37],[45,35]
+    # 35:[45,35],        [40,35]
+    # 35:[45,35],[42,37],[40,35]
+    my($splicepos, $splicelen, %assert_between);
     for my $i (0..$#$intervals) {
-        if (   $epoch eq $intervals->[$i][1]
-               && $intervals->[$i][1] eq $intervals->[$i+1][0]) {
-            $intervals->[$i+1][0] = $intervals->[$i][0];
-            $splicepos = $i;
-            last;
+        if (   $epoch eq $intervals->[$i][0]
+            or $epoch eq $intervals->[$i][1]
+           ) {
+            for (my $j = 1; $i+$j <= $#$intervals; $j++) {
+                if (   $epoch eq $intervals->[$i+$j][0]
+                    or $epoch eq $intervals->[$i+$j][1]) {
+                    $intervals->[$i+$j][0] = _bigfloatmax($intervals->[$i][0],$intervals->[$i+$j][0]);
+                    $intervals->[$i+$j][1] = _bigfloatmin($intervals->[$i][1],$intervals->[$i+$j][1]);
+                    $splicepos = $i;
+                    $splicelen = $j;
+                    last;
+                } else {
+                    for my $k (0,1) {
+                        $assert_between{$intervals->[$i+$j][$k]}++;
+                    }
+                }
+            }
         }
     }
     if (defined $splicepos) {
-        splice @$intervals, $splicepos, 1;
+        for my $k (keys %assert_between) {
+            if (_bigfloatgt($k,$intervals->[$splicepos+$splicelen][0])
+                or _bigfloatlt($k,$intervals->[$splicepos+$splicelen][1])){
+                $DB::single=1;
+                require Data::Dumper;
+                die "Panic: broken intervals:".Data::Dumper::Dumper($intervals);
+            }
+        }
+        splice @$intervals, $splicepos, $splicelen;
     } else {
+        $DB::single=1;
         die "Panic: Could not find an interval position to insert '$epoch'";
     }
 }

@@ -1,12 +1,14 @@
 --- #YAML:1.0
 name:               File-Rsync-Mirror-Recent
-version:            0.0.3
+version:            0.0.4
 abstract:           ~
 author:
     - Andreas König <andreas.koenig.7os6VVqR@franz.ak.mind.de>
 license:            unknown
 distribution_type:  module
 configure_requires:
+    ExtUtils::MakeMaker:  0
+build_requires:
     ExtUtils::MakeMaker:  0
 requires:
     accessors:         0
@@ -21,16 +23,17 @@ requires:
     Scalar::Util:      0
     Test::More:        0
     Time::HiRes:       0
+    version:           0
     YAML::Syck:        0
 provides:
     File::Rsync::Mirror::Recent:
         file:  lib/File/Rsync/Mirror/Recent.pm
-        version:  0.0.3
+        version:  0.0.4
 no_index:
     directory:
         - t
         - inc
-generated_by:       ExtUtils::MakeMaker version 6.48
+generated_by:       ExtUtils::MakeMaker version 6.5101
 meta-spec:
     url:      http://module-build.sourceforge.net/META-spec-v1.4.html
     version:  1.4
