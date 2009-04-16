@@ -14,22 +14,22 @@ not run its Makefile.PL or Build.PL.
 -----BEGIN PGP SIGNED MESSAGE-----
 Hash: SHA1
 
-SHA1 06a96da5bcc4d3a288784e6c5464e642a9e5729c Changes
+SHA1 b2e7b33d6cc102cd71b69c42a11896dc3ea31cc1 Changes
 SHA1 9ef95e82b4a23d6c5c6cd8a495ff1538a5d1c665 HOWTO.mirrorcpan
 SHA1 3646909920906b4f474bd8c89cb534aca5b45df4 MANIFEST
 SHA1 ce74ae75ce94d892e544b0d525831a44ddd421f3 MANIFEST.SKIP
-SHA1 5c1f6dc35bfb074f9695e88f861538b8672a6ba3 META.yml
-SHA1 7dcf6455d9b2658081732907d489bb9073be943a Makefile.PL
+SHA1 b87ca17140d40e729d3e63bf96bb071de6f41df1 META.yml
+SHA1 a1585070be052da59a69b5c730dd39030ece67b9 Makefile.PL
 SHA1 9f8f5135ada0099d2bacb732145ceacb3658bdda README
-SHA1 b9d363822c0f76a1fbd2d3c1e92e4e3960151eca Todo
+SHA1 7bbb3a2c587fc455134c84d49197a75289ed618f Todo
 SHA1 b9fe83d0c7366cef8d09981dca947e49461b505c bin/rrr-aggregate
 SHA1 83f9d3568034af78dc13489457b871728c79a97d bin/rrr-dirtyupdate
 SHA1 d83e523ecbca675917a7389d0ab502e11c9725f1 bin/rrr-news
 SHA1 5bc819449f48e0675754d6e452e22fc35ec9bb0e bin/rrr-overview
-SHA1 b461da3a7ee0993adc95a136883e1bc40520c379 lib/File/Rsync/Mirror/Recent.pm
-SHA1 f7ba15339427c4eac149330d9d8d0724be89ef33 lib/File/Rsync/Mirror/Recentfile.pm
-SHA1 b85391c4b5ed6490f6d7bb58fed2aad4f9206474 lib/File/Rsync/Mirror/Recentfile/Done.pm
-SHA1 d3b5a5871f81da654de0173a20e51e320a4d1414 lib/File/Rsync/Mirror/Recentfile/FakeBigFloat.pm
+SHA1 827c122808040ab49ca90a2438b9844adc6119ed lib/File/Rsync/Mirror/Recent.pm
+SHA1 b06820574ca8a332b97bb465c744eb67d74d9c90 lib/File/Rsync/Mirror/Recentfile.pm
+SHA1 de43ff85a337cf02abae38aa9227144718cda25f lib/File/Rsync/Mirror/Recentfile/Done.pm
+SHA1 89390c582ba3e0226f24c2697081f64bd1b6b469 lib/File/Rsync/Mirror/Recentfile/FakeBigFloat.pm
 SHA1 ecb0eeca7d32ebd78fdec1e3eac99f07a2afb35e t/00-load.t
 SHA1 117b87577c3a0f08c385addd678ca82a273c9a91 t/01-util.t
 SHA1 dda23bc9a1209dedb2cba779876581a3a09d940b t/02-operation.t
@@ -44,7 +44,7 @@ SHA1 640935336dc1123c0069bcf5432bcaedc2cf22d3 t/pod.t
 -----BEGIN PGP SIGNATURE-----
 Version: GnuPG v1.4.9 (GNU/Linux)
 
-iEYEARECAAYFAknjIiwACgkQ7IA58KMXwV3HDACg7E/yvq8HQfqUk//M/QY0DhgR
-4lUAn3nAFTFh4/mTHJkwaD1lt6bAYV+D
-=LiOA
+iEYEARECAAYFAknmp9kACgkQ7IA58KMXwV21RgCfYiZWTwARraTfh3tBv2d+94aJ
+Q7IAoKNVVJidoBf9Qa/cHP4cyGw+8F6u
+=hVYQ
 -----END PGP SIGNATURE-----
