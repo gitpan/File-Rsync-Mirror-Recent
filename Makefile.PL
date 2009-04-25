@@ -51,6 +51,9 @@ for my $m (qw(Recentfile Recentfile::Done Recentfile::FakeBigFloat )) {
                           };
 }
 
+my $preferzip = "gzip"; # bzip2 | gzip
+warn "XXXXXXXXXX current zip variant: $preferzip XXXXXXXXXX\n" for 1..3;
+sleep 2;
 WriteMakefile
     (
      NAME                => 'File::Rsync::Mirror::Recent',
@@ -75,7 +78,13 @@ WriteMakefile
       'YAML::Syck'       => 0,
       'version'          => 0,
      },
-     EXE_FILES    => [qw(bin/rrr-aggregate bin/rrr-news)],
+     EXE_FILES    => [
+                      'bin/rrr',
+                      'bin/rrr-aggregate',
+                      'bin/rrr-dirtyupdate',
+                      'bin/rrr-news',
+                      'bin/rrr-overview',
+                     ],
      dist => {
               DIST_DEFAULT => join(" ", # note: order matters!
                                    "verify-changes-date",
@@ -84,9 +93,13 @@ WriteMakefile
                                    "setversion",
                                    "all",
                                    "tardist",
+                                   "release-memo",
                                   ),
-              COMPRESS => 'bzip2 -9f',
-              SUFFIX => ".bz2",
+              $preferzip eq "bzip2" ?
+              (COMPRESS => 'bzip2 -9f',
+               SUFFIX => ".bz2") :
+              (COMPRESS => 'gzip -9f',
+               SUFFIX => ".gz"),
              },
      ($ExtUtils::MakeMaker::VERSION >= 6.4502 ?
       (META_MERGE => {
@@ -129,6 +142,13 @@ verify-no-subdir:
 the-release-name :
 	$(NOECHO) $(ECHO) 'version ' $(VERSION)
 	$(NOECHO) $(ECHO) 'release-name ' $(DISTVNAME).tar$(SUFFIX)
+
+release-memo:
+	$(NOECHO) $(ECHO) 'after successful make dist and upload do not forget to'
+	$(NOECHO) $(ECHO) ' make tag'
+	$(NOECHO) $(ECHO) ' git push --tags'
+	$(NOECHO) $(ECHO) 'before writing Changes do not forget to'
+	$(NOECHO) $(ECHO) ' git --no-pager log --no-merges --pretty=format:" %x20%x20 - %s (%an)" | less'
 
 tag ::
 	git tag -m 'This is $(VERSION)' "$(VERSION)"

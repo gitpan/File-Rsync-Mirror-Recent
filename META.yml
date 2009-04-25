@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name:               File-Rsync-Mirror-Recent
-version:            0.0.5
+version:            0.0.6
 abstract:           ~
 author:
     - Andreas König <andreas.koenig.7os6VVqR@franz.ak.mind.de>
@@ -28,16 +28,16 @@ requires:
 provides:
     File::Rsync::Mirror::Recent:
         file:  lib/File/Rsync/Mirror/Recent.pm
-        version:  0.0.5
+        version:  0.0.6
     File::Rsync::Mirror::Recentfile:
         file:  lib/File/Rsync/Mirror/Recentfile.pm
-        version:  0.0.1
+        version:  0.0.6
     File::Rsync::Mirror::Recentfile::Done:
         file:  lib/File/Rsync/Mirror/Recentfile/Done.pm
-        version:  0.0.1
+        version:  0.0.6
     File::Rsync::Mirror::Recentfile::FakeBigFloat:
         file:  lib/File/Rsync/Mirror/Recentfile/FakeBigFloat.pm
-        version:  0.0.1
+        version:  0.0.6
 no_index:
     directory:
         - t

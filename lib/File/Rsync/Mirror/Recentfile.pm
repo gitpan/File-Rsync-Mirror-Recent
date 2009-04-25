@@ -30,7 +30,7 @@ use Storable;
 use Time::HiRes qw();
 use YAML::Syck;
 
-use version; our $VERSION = qv('0.0.5');
+use version; our $VERSION = qv('0.0.6');
 
 use constant MAX_INT => ~0>>1; # anything better?
 use constant DEFAULT_PROTOCOL => 1;
@@ -1339,10 +1339,12 @@ sub mirror_path {
             }
             $self->register_rsync_error (@err);
             if (++$retried >= 3) {
-                warn "XXX giving up.";
+                my $batchsize = @$path;
+                warn "The number of rsync retries now reached 3 within a batch of size $batchsize. Error was '@err'. Giving up now, will retry later, ";
                 $gaveup = 1;
                 last;
             }
+            sleep 1;
         }
         unless ($gaveup) {
             $self->un_register_rsync_error ();
@@ -1550,7 +1552,10 @@ sub _recent_events_protocol_x {
     my $meth = sprintf "read_recent_%d", $data->{meta}{protocol};
     # we may be reading meta for the first time
     while (my($k,$v) = each %{$data->{meta}}) {
-        next if $k ne lc $k; # "Producers"
+        if ($k ne lc $k){ # "Producers"
+            $self->{ORIG}{$k} = $v;
+            next;
+        }
         next if defined $self->$k;
         $self->$k($v);
     }

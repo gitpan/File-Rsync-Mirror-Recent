@@ -1,3 +1,38 @@
+2009-04-25  Andreas J. Koenig  <andk@cpan.org>
+
+	* Todo: fill rrr program with life
+
+2009-04-25  Andreas J. Koenig  <andreas.koenig.7os6VVqR@franz.ak.mind.de>
+
+	* Minor bug: I see complaints about files not existing like
+	/authors/id/G/GW/GWADEJ/SVG-Sparkline-0.2.0.meta or
+	/authors/id/R/RC/RCAPUTO/POE-1.004.readme
+
+	In the RECENT files these are delete events but of course also new
+	events in older recent files.
+
+	I think we do not properly remember deletes when we skip-deletes and so
+	do not filter them out when we later see the "new" event.
+
+	* bug in Done.pm failing to merge two fields into one when a third is
+	present. FIXED and accompanied with new test.
+
+2009-04-24  Andreas J. Koenig  <andk@cpan.org>
+
+	* keep the index clean and run some kind of nondestructive fsck 4 times
+	a day.
+
+	* who is our backbone?
+
+	http://cpan.cpantesters.org/authors/02STAMP     # barbie
+	http://cpan.solfo.com/authors/02STAMP           # abh
+
+2009-04-17  Andreas J. Koenig  <andk@cpan.org>
+
+	* the changelog helper I included in the Makefile release memo does not
+	show tags and is much less useful than I thought. gitk is probably much
+	more convenient.
+
 2009-04-16  Andreas J. Koenig  <andk@cpan.org>
 
 	* ABH writes:
@@ -16,6 +51,10 @@
 
 	* consider state directory such we can restart after a ^C or come again
 	from a cronjob.
+
+	Reuse _runstatusfile: write atomically, see how we can use the dump to
+	start running again. Do not leak and remove globs before writing. Do not
+	only dump one rf, dump the whole complex.
 
 	* consider the effect of ^C. Is it safe?
 
