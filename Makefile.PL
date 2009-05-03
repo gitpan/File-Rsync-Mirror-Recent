@@ -79,11 +79,7 @@ WriteMakefile
       'version'          => 0,
      },
      EXE_FILES    => [
-                      'bin/rrr',
-                      'bin/rrr-aggregate',
-                      'bin/rrr-dirtyupdate',
-                      'bin/rrr-news',
-                      'bin/rrr-overview',
+                      grep {-x $_} grep { !/~/ } glob("bin/rrr*")
                      ],
      dist => {
               DIST_DEFAULT => join(" ", # note: order matters!
@@ -93,7 +89,7 @@ WriteMakefile
                                    "setversion",
                                    "all",
                                    "tardist",
-                                   "release-memo",
+                                   "memo-howto-release",
                                   ),
               $preferzip eq "bzip2" ?
               (COMPRESS => 'bzip2 -9f',
@@ -143,7 +139,7 @@ the-release-name :
 	$(NOECHO) $(ECHO) 'version ' $(VERSION)
 	$(NOECHO) $(ECHO) 'release-name ' $(DISTVNAME).tar$(SUFFIX)
 
-release-memo:
+memo-howto-release:
 	$(NOECHO) $(ECHO) 'after successful make dist and upload do not forget to'
 	$(NOECHO) $(ECHO) ' make tag'
 	$(NOECHO) $(ECHO) ' git push --tags'

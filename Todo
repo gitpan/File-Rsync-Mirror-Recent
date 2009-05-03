@@ -1,3 +1,35 @@
+2009-05-02  Andreas J. Koenig  <andk@cpan.org>
+
+	* Todo: rename rrr-dirtyupdate to rrr-update and add an option --dirty
+	so we can use it for normal update with a single file. And add a cronjob
+	that runs rrr-fsck so we get a reminder when something is not working
+	as it should.
+
+2009-04-27  Andreas J. Koenig  <andk@cpan.org>
+
+	* Todo: I still see more link_stat errors than expected. I come back to
+	the former suspicion that we do not do necessary bookkeeping on deleted
+	files so that when we reach the "new" event on a meanwhile deleted file
+	we try to mirror it although we could know better. It's just noise, no
+	harm but noise is irritating.
+
+	* Todo: more experimenting with runstatusfile to get it official
+
+	* Todo: make sure $ENV{LANG}="C" when we call rsync because we will
+	parse the error.
+
+	rsync: link_stat "/authors/id/T/TH/THINC/DateTime-Format-Flexible-0.02.tar.gz" (in PAUSE) failed: No such file or directory
+
+	rsync: link_stat "/authors/id/A/AG/AGENT/SSH-Batch-0.001.meta" (in PAUSE) failed: No such file or directory (2)
+
+	And that ignore_link_stat_error is propagated in sparse_clone.
+
+	DONE
+
+	For the record: the bug was that ignore_link_stat_error was lost during
+	sparse_clone. And then the second bug was that it did not default to
+	true. Both are now fixed.
+	
 2009-04-25  Andreas J. Koenig  <andk@cpan.org>
 
 	* Todo: fill rrr program with life
@@ -14,18 +46,24 @@
 	I think we do not properly remember deletes when we skip-deletes and so
 	do not filter them out when we later see the "new" event.
 
+	Yes, but that what ignore_link_stat_error is for, we know about this
+	race condition. We must make ignore_link_stat_error default to true.
+
+	DONE
+
 	* bug in Done.pm failing to merge two fields into one when a third is
 	present. FIXED and accompanied with new test.
 
 2009-04-24  Andreas J. Koenig  <andk@cpan.org>
 
-	* keep the index clean and run some kind of nondestructive fsck 4 times
-	a day.
+	* Todo: keep the index clean and run some kind of nondestructive fsck 4
+	times a day.
 
 	* who is our backbone?
 
 	http://cpan.cpantesters.org/authors/02STAMP     # barbie
 	http://cpan.solfo.com/authors/02STAMP           # abh
+	(http|ftp)://theoryx5.uwinnipeg.ca/pub/CPAN/    # rkobes
 
 2009-04-17  Andreas J. Koenig  <andk@cpan.org>
 
@@ -120,6 +158,8 @@ done
 	I cannot get it to fail. Apparently it is sufficient when upstream
 	always writes atomically (which of course is mandatory)?
 
+	SENT to mailing list Apr 28.
+
 	* from ABH:
 
 > https://fedorahosted.org/InstantMirror/
@@ -175,9 +215,6 @@ done
 	some void, some not, some not void but called in void context.
 
 2009-04-10  Andreas J. Koenig  <andk@cpan.org>
-
-	* Todo: rename rrr-dirtyupdate to rrr-update and add an option --dirty
-	so we can use it for normal update with a single file.
 
 	* Bug? When the dirtymark changes then the second tier hosts quickly
 	reset their DONE state and restart mirroring. But then they mirror

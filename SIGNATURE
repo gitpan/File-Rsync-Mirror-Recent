@@ -14,28 +14,29 @@ not run its Makefile.PL or Build.PL.
 -----BEGIN PGP SIGNED MESSAGE-----
 Hash: SHA1
 
-SHA1 ac9c07526605aaa4855b7f20d9a099fcc6b93c62 Changes
-SHA1 9ef95e82b4a23d6c5c6cd8a495ff1538a5d1c665 HOWTO.mirrorcpan
-SHA1 657bbc1d085ff958126d2f69f86b6d9fdeb991e6 MANIFEST
+SHA1 ecc7796aba316c1c6c17e6da1888e5bd8fe08ed8 Changes
+SHA1 b748b23a228ec2baa3e37c5d79b90d01d94b73da HOWTO.mirrorcpan
+SHA1 3ec50dcdeff33fe86abf77bc8b6eeb8e540e1381 MANIFEST
 SHA1 ce74ae75ce94d892e544b0d525831a44ddd421f3 MANIFEST.SKIP
-SHA1 ec90894fd38fe430fac54a6d2b95f68a8b7f7291 META.yml
-SHA1 47a91982ce3f3423e583af57ef9319aa63919115 Makefile.PL
+SHA1 c16d3b7247df8ab17524b61965e599d3da8163d0 META.yml
+SHA1 0db6abf92c30a6fd4df0fd60de7b7c1fb58c8ff9 Makefile.PL
 SHA1 7b9183ab00dc9022847d0eb67691b960942ee14d README
-SHA1 0e1a7abd1842be1ffbc3cc51e6c8472c2967cd2d Todo
+SHA1 f108492b32c2d280856268721876de8494b19d66 Todo
 SHA1 373adf78a68ce42facf7345bf0f883a647763772 bin/rrr
 SHA1 b9fe83d0c7366cef8d09981dca947e49461b505c bin/rrr-aggregate
-SHA1 83f9d3568034af78dc13489457b871728c79a97d bin/rrr-dirtyupdate
-SHA1 d83e523ecbca675917a7389d0ab502e11c9725f1 bin/rrr-news
+SHA1 fd4a1aa0bd723c8b45bfeddb0f70871a27b4a4ad bin/rrr-fsck
+SHA1 411decb86bd44d1a3fedadde4c5996b846c37501 bin/rrr-news
 SHA1 5bc819449f48e0675754d6e452e22fc35ec9bb0e bin/rrr-overview
-SHA1 64c52e5e41c7a1a3d0d5b8365055f37c8089ce26 lib/File/Rsync/Mirror/Recent.pm
-SHA1 bbdce81aad84202e4634a36cddf34e575461b176 lib/File/Rsync/Mirror/Recentfile.pm
-SHA1 5998e5f1f00f063df115c95dfce061302290be26 lib/File/Rsync/Mirror/Recentfile/Done.pm
-SHA1 1a585a751ce91156572bac2f79104f9c59df745b lib/File/Rsync/Mirror/Recentfile/FakeBigFloat.pm
+SHA1 3b3e699662653cafe305af952c074f39144ba727 bin/rrr-update
+SHA1 9a06eb001a76671da6b6a5dfb86531af92f7364a lib/File/Rsync/Mirror/Recent.pm
+SHA1 b857f282816603afc73f028bd3fc3f67810c30d6 lib/File/Rsync/Mirror/Recentfile.pm
+SHA1 c315c2369f1671fb074f176d6154a64e271dfac3 lib/File/Rsync/Mirror/Recentfile/Done.pm
+SHA1 13ac96746389e0efea21cf3a1ff2d7e4cde8aeea lib/File/Rsync/Mirror/Recentfile/FakeBigFloat.pm
 SHA1 ecb0eeca7d32ebd78fdec1e3eac99f07a2afb35e t/00-load.t
 SHA1 117b87577c3a0f08c385addd678ca82a273c9a91 t/01-util.t
 SHA1 dda23bc9a1209dedb2cba779876581a3a09d940b t/02-operation.t
 SHA1 deecc97ef168428e0d199f138be99e35b3fe8b4d t/03-done.t
-SHA1 a27fda4e62ebea458dae53cd30474b71ebd0624c t/04-run.t
+SHA1 f8b1fa7895622ef28c7d5d65b5a53f2ea7ae3024 t/04-run.t
 SHA1 c4c1beb50a6545c80f42234dcc21beee8e2ac20f t/70_critic.t
 SHA1 2cf0248a9cd211c9bb7ded7d7f035e3638244c11 t/RECENT-1h.yaml
 SHA1 3503eb153f63dd8d11b49161c27047e7bf0b8a04 t/RECENT-6h.yaml
@@ -45,7 +46,7 @@ SHA1 640935336dc1123c0069bcf5432bcaedc2cf22d3 t/pod.t
 -----BEGIN PGP SIGNATURE-----
 Version: GnuPG v1.4.9 (GNU/Linux)
 
-iEYEARECAAYFAknzMOkACgkQ7IA58KMXwV0OWQCg+RWpvMfxbCJOkJMSC/8OEKa1
-YWwAoJSen+4mR5RfhgPe6MDMmyVzpElB
-=SHjh
+iEYEARECAAYFAkn9htsACgkQ7IA58KMXwV2yFwCeL/Hk0VATOiDOjTYRwbSI7a0z
+lvgAninQaH+x/VfYj/w7TTjAX1Bo2LNX
+=jyCo
 -----END PGP SIGNATURE-----

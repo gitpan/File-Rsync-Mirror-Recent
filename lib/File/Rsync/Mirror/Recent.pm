@@ -28,7 +28,7 @@ use Storable;
 use Time::HiRes qw();
 use YAML::Syck;
 
-use version; our $VERSION = qv('0.0.6');
+use version; our $VERSION = qv('0.0.7');
 
 =head1 SYNOPSIS
 
@@ -76,7 +76,8 @@ sub new {
 
 =head2 my $obj = CLASS->thaw($statusfile)
 
-Constructor from a statusfile left over from a previous rmirror run.
+(experimental) Constructor from a statusfile left over from a previous
+rmirror run. See _runstatusfile in the code for details.
 
 =cut
 
@@ -134,7 +135,7 @@ BEGIN {
          "_principal_recentfile",
          "_recentfiles",
          "_rsync",
-         "_runstatusfile",        # frequenty dumps all rfs
+         "_runstatusfile",        # frequently dumps all rfs
          "_verbose",              # internal variable for verbose setter/getter
          "_verboselog",           # internal variable for verboselog setter/getter
         );
@@ -838,6 +839,7 @@ sub _fetch_as_tempfile {
         Carp::confess(YAML::Syck::Dump($self->rsync_options));
     }
     my $dst = $fh->filename;
+    local($ENV{LANG}) = "C";
     $rsync->exec
         (
          src => join("/",$self->remoteroot,$rfile),
@@ -987,6 +989,19 @@ the hosts.
 This is about speeding up rsync operation on large trees. Uses a small
 metadata cocktail and pull technology.
 
+rersyncrecent solves this problem with a couple of (usually 2-10)
+lightweight index files which cover different overlapping time
+intervals. The master writes these files and the clients/slaves can
+construct the full tree from the information contained in them. The
+most recent index file usually covers the last seconds or minutes or
+hours of the tree and depending on the needs, slaves can rsync every
+few seconds or minutes and then bring their trees in full sync.
+
+The rersyncrecent model was developed for CPAN but as it is both
+convenient and economic it is also a general purpose solution. I'm
+looking forward to see a CPAN backbone that is only a few seconds
+behind PAUSE.
+
 =head2 NON-COMPETITORS
 
  File::Mirror        JWU/File-Mirror/File-Mirror-0.10.tar.gz only local trees
@@ -1027,23 +1042,13 @@ incestuous relation but it has the disadvantage that these batch files
 replicate the contents of the involved files. This seems inappropriate
 when the nodes already have a means of communicating over rsync.
 
+=head2 HONORABLE MENTION
+
 B<instantmirror> at https://fedorahosted.org/InstantMirror/ is an
-ambitious project that tries to combine various technologies to
-overcome the current situation. It's been founded in 2009-03 and at
-the time of this writing it is still a bit early to comment on.
-
-rersyncrecent solves this problem with a couple of (usually 2-10)
-lightweight index files which cover different overlapping time
-intervals. The master writes these files and the clients/slaves can
-construct the full tree from the information contained in them. The
-most recent index file usually covers the last seconds or minutes or
-hours of the tree and depending on the needs, slaves can rsync every
-few seconds or minutes and then bring their trees in full sync.
-
-The rersyncrecent mode was developed for CPAN but as it is convenient
-and economic it is also a general purpose solution. I'm looking
-forward to see a CPAN backbone that is only a few seconds behind
-PAUSE. And then ... the first FUSE based CPAN filesystem anyone?
+ambitious project that tries to combine various technologies (squid,
+bittorrent) to overcome the current slowness with the main focus on
+fedora. It's been founded in 2009-03 and at the time of this writing
+it is still a bit early to comment on.
 
 =head1 LIMITATIONS
 

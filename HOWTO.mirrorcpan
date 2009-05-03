@@ -32,13 +32,12 @@ host, maybe excluding authors/ and modules/.
 The loop is something like this:
 
     $ENV{USER}="sandy"; # fill in your name
-    $ENV{RSYNC_PASSWORD} = "secret"; # fill in you passwd
+    $ENV{RSYNC_PASSWORD} = "secret"; # fill in your passwd
 
     use File::Rsync::Mirror::Recent;
     my @rrr = map {
         File::Rsync::Mirror::Recent->new
                 (
-                 ignore_link_stat_errors    => 1,
                  localroot                  => "/home/ftp/pub/PAUSE/$_", # your local path
                  remote                     => "pause.perl.org::PAUSE/$_/RECENT.recent", # your upstream
                  max_files_per_connection   => 863,
