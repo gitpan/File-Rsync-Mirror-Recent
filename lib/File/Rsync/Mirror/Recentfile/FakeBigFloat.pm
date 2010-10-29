@@ -24,7 +24,7 @@ File::Rsync::Mirror::Recentfile::FakeBigFloat - pseudo bigfloat support
 
 =cut
 
-use version; our $VERSION = qv('0.0.7');
+use version; our $VERSION = qv('0.0.8');
 
 use Exporter;
 use base qw(Exporter);
@@ -190,6 +190,8 @@ sub _increase_a_bit ($;$) {
     if (defined $r){
         if ($r eq $l){
             die "Alert: _increase_a_bit called with identical arguments";
+        } elsif ($r > int($l)+1) {
+            $r = int($l)+1;
         }
     } else {
         $r = _my_sprintf_float(Data::Float::nextup($l));
@@ -198,7 +200,7 @@ sub _increase_a_bit ($;$) {
     if ($l == $r) {
     } else {
         # native try
-        my $try = _my_sprintf_float((3*$l+$r)/4);
+        my $try = _my_sprintf_float(($l+$r)/2);
         if (_bigfloatlt($l,$try) && _bigfloatlt($try,$r) ) {
             $ret = $try;
         }
@@ -235,7 +237,7 @@ sub _increase_a_bit_tail ($$) {
     # we want 1+$srlength because if l ends in 99999 and r in 00000,
     # we need one digit more
     my $fformat = sprintf "%%0%d.%df", 1+$srlength, $srmantissa;
-    my $appe = sprintf $fformat, (3*$sl+$sr)/4;
+    my $appe = sprintf $fformat, ($sl+$sr)/2;
     $appe =~ s/(\d)0+$/$1/;
     if ($ret =~ /\./) {
         $appe =~ s/\.//;

@@ -25,9 +25,12 @@ http://cpan.perl.org/SITES.html#RSYNC
 The first thing you should prepare is the CPAN tree itself on your
 disk. The source where you take it from does not matter that much.
 Take it from where you always took it. The setup I suggest is to
-mirror authors/ and modules/ with this program. And once per day or
-per week or so do a traditional rsync from that old school mirroring
-host, maybe excluding authors/ and modules/.
+mirror authors/ and modules/ with this program. And once per day or so
+do a traditional rsync from that old school mirroring host, maybe
+authors/ and modules/, something like:
+
+  rsync -av --delete --exclude "authors/" --exclude "modules/" \
+    ftp.funet.fi::CPAN /home/ftp/pub/CPAN
 
 The loop is something like this:
 
@@ -51,6 +54,7 @@ The loop is something like this:
                   times             => 1,
                   checksum          => 0,
                   'omit-dir-times'  => 1, # not available before rsync 3.0.3
+                  timeout           => 300, # do not allow rsync to hang forever
                  },
                  verbose                    => 1,
                  verboselog                 => "/var/log/rmirror-pause.log",
@@ -79,11 +83,12 @@ the other, the traditional rsync loop. Worry about that later.
 You see the option 'max_files_per_connection' which I filled with 863
 and you need to find your favorite number. The larger the number the
 faster the whole download goes. As you already have a mirror, you
-probably want to take 10 or 20 times times that much. CPAN is at the
-moment (2009-03) consisting of 142000 files. This option chunks the
-downloads into piecemeal units and between these units the process
-takes a peek at the most recent files to download them with higher
-preference.
+probably want to take 10 or 20 times times that much. CPAN's authors
+directory is at the moment (2010-10) consisting of 180000 files. This
+option chunks the downloads into piecemeal units and between these
+units the process takes a peek at the most recent files to download
+them with higher preference. That way we get the newest files
+immediately in sync while we are mirroring the long tail of old files.
 
 The localroot parameter contains your target directory. Because only
 the authors/ and the modules/ directory are hosted by the PAUSE, you

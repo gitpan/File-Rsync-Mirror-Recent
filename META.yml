@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name:               File-Rsync-Mirror-Recent
-version:            0.0.7
+version:            0.0.8-TRIAL
 abstract:           ~
 author:
     - Andreas König <andreas.koenig.7os6VVqR@franz.ak.mind.de>
@@ -15,9 +15,10 @@ requires:
     Data::Float:       0
     Data::Serializer:  0
     File::Basename:    0
+    File::Find::Rule:  0
     File::Path:        0
     File::Rsync:       0
-    File::Temp:        0
+    File::Temp:        0.21
     List::MoreUtils:   0
     List::Pairwise:    0
     Scalar::Util:      0
@@ -27,22 +28,22 @@ requires:
     YAML::Syck:        0
 provides:
     File::Rsync::Mirror::Recent:
-        file:  lib/File/Rsync/Mirror/Recent.pm
-        version:  0.0.7
+        file:     lib/File/Rsync/Mirror/Recent.pm
+        version:  0.0.8-TRIAL
     File::Rsync::Mirror::Recentfile:
         file:  lib/File/Rsync/Mirror/Recentfile.pm
-        version:  0.0.7
+        version:  0.0.8
     File::Rsync::Mirror::Recentfile::Done:
         file:  lib/File/Rsync/Mirror/Recentfile/Done.pm
-        version:  0.0.7
+        version:  0.0.8
     File::Rsync::Mirror::Recentfile::FakeBigFloat:
         file:  lib/File/Rsync/Mirror/Recentfile/FakeBigFloat.pm
-        version:  0.0.7
+        version:  0.0.8
 no_index:
     directory:
         - t
         - inc
-generated_by:       ExtUtils::MakeMaker version 6.50
+generated_by:       ExtUtils::MakeMaker version 6.5705
 meta-spec:
     url:      http://module-build.sourceforge.net/META-spec-v1.4.html
     version:  1.4

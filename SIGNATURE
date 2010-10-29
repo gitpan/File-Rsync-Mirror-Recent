@@ -1,5 +1,5 @@
 This file contains message digests of all files listed in MANIFEST,
-signed via the Module::Signature module, version 0.55.
+signed via the Module::Signature module, version 0.63.
 
 To verify the content in this distribution, first make sure you have
 Module::Signature installed, then type:
@@ -14,24 +14,24 @@ not run its Makefile.PL or Build.PL.
 -----BEGIN PGP SIGNED MESSAGE-----
 Hash: SHA1
 
-SHA1 ecc7796aba316c1c6c17e6da1888e5bd8fe08ed8 Changes
-SHA1 b748b23a228ec2baa3e37c5d79b90d01d94b73da HOWTO.mirrorcpan
+SHA1 7ba734832516a882db2931db50dc5a23160a8791 Changes
+SHA1 62721cd339c89993a88a1a5bea6c148e87e8c949 HOWTO.mirrorcpan
 SHA1 3ec50dcdeff33fe86abf77bc8b6eeb8e540e1381 MANIFEST
 SHA1 ce74ae75ce94d892e544b0d525831a44ddd421f3 MANIFEST.SKIP
-SHA1 c16d3b7247df8ab17524b61965e599d3da8163d0 META.yml
-SHA1 0db6abf92c30a6fd4df0fd60de7b7c1fb58c8ff9 Makefile.PL
+SHA1 b9b36351db9d5d424559aa300c4663f5455537ce META.yml
+SHA1 09ed3b3e3a61bb099db69eb1d45b7c2cac887d09 Makefile.PL
 SHA1 7b9183ab00dc9022847d0eb67691b960942ee14d README
-SHA1 f108492b32c2d280856268721876de8494b19d66 Todo
-SHA1 373adf78a68ce42facf7345bf0f883a647763772 bin/rrr
+SHA1 df50ed1f608edfda74d3725d6fc57fbb7cf2cd87 Todo
+SHA1 a828b9726142c9d498c1cc856a97599065b4f4b8 bin/rrr
 SHA1 b9fe83d0c7366cef8d09981dca947e49461b505c bin/rrr-aggregate
 SHA1 fd4a1aa0bd723c8b45bfeddb0f70871a27b4a4ad bin/rrr-fsck
 SHA1 411decb86bd44d1a3fedadde4c5996b846c37501 bin/rrr-news
 SHA1 5bc819449f48e0675754d6e452e22fc35ec9bb0e bin/rrr-overview
-SHA1 3b3e699662653cafe305af952c074f39144ba727 bin/rrr-update
-SHA1 9a06eb001a76671da6b6a5dfb86531af92f7364a lib/File/Rsync/Mirror/Recent.pm
-SHA1 b857f282816603afc73f028bd3fc3f67810c30d6 lib/File/Rsync/Mirror/Recentfile.pm
-SHA1 c315c2369f1671fb074f176d6154a64e271dfac3 lib/File/Rsync/Mirror/Recentfile/Done.pm
-SHA1 13ac96746389e0efea21cf3a1ff2d7e4cde8aeea lib/File/Rsync/Mirror/Recentfile/FakeBigFloat.pm
+SHA1 f1a29c6270a0d37693ad9cd8969c3566cfcac566 bin/rrr-update
+SHA1 b06dff6bd4f39f4d1c948446ba822615709d8f8a lib/File/Rsync/Mirror/Recent.pm
+SHA1 e74fe32e272bdee292c77ee0097828b47579c4e1 lib/File/Rsync/Mirror/Recentfile.pm
+SHA1 cfbb350da5abd5462b3d6c79f95e01fac8e32ad4 lib/File/Rsync/Mirror/Recentfile/Done.pm
+SHA1 7858aa6309e486298e10bb075b2c76b36501d121 lib/File/Rsync/Mirror/Recentfile/FakeBigFloat.pm
 SHA1 ecb0eeca7d32ebd78fdec1e3eac99f07a2afb35e t/00-load.t
 SHA1 117b87577c3a0f08c385addd678ca82a273c9a91 t/01-util.t
 SHA1 dda23bc9a1209dedb2cba779876581a3a09d940b t/02-operation.t
@@ -44,9 +44,9 @@ SHA1 3d441da95e5741843653faf086b33ead8c255c8e t/perlcriticrc
 SHA1 d51bd56359ff586982a17f8adeb9e0636abf3a11 t/pod-coverage.t
 SHA1 640935336dc1123c0069bcf5432bcaedc2cf22d3 t/pod.t
 -----BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.9 (GNU/Linux)
+Version: GnuPG v1.4.10 (GNU/Linux)
 
-iEYEARECAAYFAkn9htsACgkQ7IA58KMXwV2yFwCeL/Hk0VATOiDOjTYRwbSI7a0z
-lvgAninQaH+x/VfYj/w7TTjAX1Bo2LNX
-=jyCo
+iEYEARECAAYFAkzKai8ACgkQ7IA58KMXwV3Y+QCg0feu1rif6OQcfiLM1MTb8ulL
+6E4Anj5qGZYmSqYtOFRjcogBF8VwrL1O
+=4sfH
 -----END PGP SIGNATURE-----

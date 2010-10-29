@@ -30,7 +30,7 @@ use Storable;
 use Time::HiRes qw();
 use YAML::Syck;
 
-use version; our $VERSION = qv('0.0.7');
+use version; our $VERSION = qv('0.0.8');
 
 use constant MAX_INT => ~0>>1; # anything better?
 use constant DEFAULT_PROTOCOL => 1;
@@ -188,7 +188,7 @@ sub DESTROY {
     unless ($self->_current_tempfile_fh) {
         if (my $tempfile = $self->_current_tempfile) {
             if (-e $tempfile) {
-                unlink $tempfile; # may fail in global destruction
+                # unlink $tempfile; # may fail in global destruction
             }
         }
     }
@@ -821,12 +821,29 @@ sub lock {
     # XXX need a way to allow breaking the lock
     my $start = time;
     my $locktimeout = $self->locktimeout || 600;
-    while (not mkdir "$rfile.lock") {
+    my %have_warned;
+  GETLOCK: while (not mkdir "$rfile.lock") {
+        if (open my $fh, "<", "$rfile.lock/process") {
+            chomp(my $process = <$fh>);
+            if (0) {
+            } elsif ($$ == $process) {
+                last GETLOCK;
+            } elsif (kill 0, $process) {
+                warn "Warning: process $process holds a lock, waiting..." unless $have_warned{$process}++;
+            } else {
+                warn "Warning: breaking lock held by process $process";
+                sleep 1;
+                last GETLOCK;
+            }
+        }
         Time::HiRes::sleep 0.01;
         if (time - $start > $locktimeout) {
             die "Could not acquire lockdirectory '$rfile.lock': $!";
         }
     }
+    open my $fh, ">", "$rfile.lock/process" or die "Could not open >$rfile.lock/process\: $!";
+    print $fh $$, "\n";
+    close $fh or die "Could not close: $!";
     $self->_is_locked (1);
 }
 
@@ -1045,12 +1062,11 @@ sub meta_data {
 =head2 $success = $obj->mirror ( %options )
 
 Mirrors the files in this I<recentfile> as reported by
-C<recent_events>. Options named C<after>, C<before>, C<max>, and
-C<skip-deletes> are passed through to the C<recent_events> call. The
-boolean option C<piecemeal>, if true, causes C<mirror> to only rsync
-C<max_files_per_connection> and keep track of the rsynced files so
-that future calls will rsync different files until all files are
-brought to sync.
+C<recent_events>. Options named C<after>, C<before>, C<max> are passed
+through to the C<recent_events> call. The boolean option C<piecemeal>,
+if true, causes C<mirror> to only rsync C<max_files_per_connection>
+and keep track of the rsynced files so that future calls will rsync
+different files until all files are brought to sync.
 
 =cut
 
@@ -1058,7 +1074,10 @@ sub mirror {
     my($self, %options) = @_;
     my $trecentfile = $self->get_remote_recentfile_as_tempfile();
     $self->_use_tempfile (1);
-    my %passthrough = map { ($_ => $options{$_}) } qw(before after max skip-deletes);
+    # skip-deletes is inadequat for passthrough within mirror. We
+    # would never reach uptodateness when a delete were on a
+    # borderline
+    my %passthrough = map { ($_ => $options{$_}) } qw(before after max);
     my ($recent_events) = $self->recent_events(%passthrough);
     my(@error, @dlcollector); # download-collector: array containing paths we need
     my $first_item = 0;
@@ -1106,7 +1125,7 @@ sub mirror {
     # once we've gone to the end we consider ourselves free of obligations
     $self->unseed;
     $self->_mirror_unhide_tempfile ($trecentfile);
-    $self->_mirror_perform_delayed_ops;
+    $self->_mirror_perform_delayed_ops(\%options);
     return !@error;
 }
 
@@ -1270,12 +1289,12 @@ sub _mirror_unhide_tempfile {
 }
 
 sub _mirror_perform_delayed_ops {
-    my($self) = @_;
+    my($self,$options) = @_;
     my $delayed = $self->delayed_operations;
     for my $dst (keys %{$delayed->{unlink}}) {
         unless (unlink $dst) {
             require Carp;
-            Carp::cluck ( "Warning: Error while unlinking '$dst': $!" );
+            Carp::cluck ( "Warning: Error while unlinking '$dst': $!" ) if $options->{verbose};
         }
         if ($self->verbose) {
             my $doing = "Del";
@@ -1294,7 +1313,7 @@ sub _mirror_perform_delayed_ops {
     for my $dst (sort {length($b) <=> length($a)} keys %{$delayed->{rmdir}}) {
         unless (rmdir $dst) {
             require Carp;
-            Carp::cluck ( "Warning: Error on rmdir '$dst': $!" );
+            Carp::cluck ( "Warning: Error on rmdir '$dst': $!" ) if $options->{verbose};
         }
         if ($self->verbose) {
             my $doing = "Del";
@@ -1415,7 +1434,8 @@ sub _my_current_rfile {
     my $rfile;
     if ($self->_use_tempfile) {
         $rfile = $self->_current_tempfile;
-    } else {
+    }
+    unless ($rfile && -s $rfile) {
         $rfile = $self->rfile;
     }
     return $rfile;
@@ -1912,7 +1932,8 @@ sub unlock {
     my($self) = @_;
     return unless $self->_is_locked;
     my $rfile = $self->rfile;
-    rmdir "$rfile.lock";
+    unlink "$rfile.lock/process" or warn "Could not unlink lockfile '$rfile.lock/process': $!";
+    rmdir "$rfile.lock" or warn "Could not rmdir lockdir '$rfile.lock': $!";;
     $self->_is_locked (0);
 }
 
@@ -1976,42 +1997,74 @@ sub update {
         die "update called without path argument" unless defined $path;
         die "update called without type argument" unless defined $type;
         die "update called with illegal type argument: $type" unless $type =~ /(new|delete)/;
-        # since we have keep_delete_objects_forever we must let them inject delete objects too:
-        #die "update called with \$type=$type and \$dirty_epoch=$dirty_epoch; ".
-        #    "dirty_epoch only allowed with type=new" if defined $dirty_epoch and $type ne "new";
-        my $canonmeth = $self->canonize;
-        unless ($canonmeth) {
-            $canonmeth = "naive_path_normalize";
-        }
-        $path = $self->$canonmeth($path);
     }
-    my $lrd = $self->localroot;
     $self->lock;
-    # you must calculate the time after having locked, of course
-    my $now = Time::HiRes::time;
-    my $interval = $self->interval;
-    my $secs = $self->interval_secs();
-    my $recent = $self->recent_events;
+    my $ctx = $self->_locked_batch_update([{path=>$path,type=>$type,epoch=>$dirty_epoch}]);
+    $self->write_recent($ctx->{recent}) if $ctx->{something_done};
+    $self->_assert_symlink;
+    $self->unlock;
+}
 
-    my $epoch;
-    if (defined $dirty_epoch && _bigfloatgt($now,$dirty_epoch)) {
-        $epoch = $dirty_epoch;
-    } else {
-        $epoch = $self->_epoch_monotonically_increasing($now,$recent);
-    }
+=head2 $obj->batch_update($batch)
 
-    $recent ||= [];
-    my $oldest_allowed = 0;
-    my $merged = $self->merged;
-    if ($merged->{epoch}) {
-        my $virtualnow = _bigfloatmax($now,$epoch);
-        # for the lower bound I think we need no big math, we calc already
-        $oldest_allowed = min($virtualnow - $secs, $merged->{epoch}, $epoch);
-    } else {
-        # as long as we are not merged at all, no limits!
-    }
+Like update but for many files. $batch is an arrayref containing
+hashrefs with the structure
+
+  {
+    path => $path,
+    type => $type,
+    epoch => $epoch,
+  }
+
+
+
+=cut
+sub batch_update {
+    my($self,$batch) = @_;
+    $self->lock;
+    my $ctx = $self->_locked_batch_update($batch);
+    $self->write_recent($ctx->{recent}) if $ctx->{something_done};
+    $self->_assert_symlink;
+    $self->unlock;
+}
+sub _locked_batch_update {
+    my($self,$batch) = @_;
     my $something_done = 0;
- TRUNCATE: while (@$recent) {
+    my $recent = $self->recent_events;
+    my %paths_in_recent = map { $_->{path} => undef } @$recent;
+    my $interval = $self->interval;
+    my $canonmeth = $self->canonize;
+    unless ($canonmeth) {
+        $canonmeth = "naive_path_normalize";
+    }
+    my $oldest_allowed = 0;
+    my $setting_new_dirty_mark = 0;
+    my $console;
+    if ($self->verbose && @$batch > 1) {
+        eval {require Time::Progress};
+        warn "dollarat[$@]" if $@;
+        $| = 1;
+        $console = new Time::Progress;
+        $console->attr( min => 1, max => scalar @$batch );
+        print "\n";
+    }
+    my $i = 0;
+    my $memo_splicepos;
+ ITEM: for my $item (sort {($b->{epoch}||0) <=> ($a->{epoch}||0)} @$batch) {
+        $i++;
+        print $console->report( "\rdone %p elapsed: %L (%l sec), ETA %E (%e sec)", $i ) if $console and not $i % 50;
+        my $ctx = $self->_update_batch_item($item,$canonmeth,$recent,$setting_new_dirty_mark,$oldest_allowed,$something_done,\%paths_in_recent,$memo_splicepos);
+        $something_done = $ctx->{something_done};
+        $oldest_allowed = $ctx->{oldest_allowed};
+        $setting_new_dirty_mark = $ctx->{setting_new_dirty_mark};
+        $recent = $ctx->{recent};
+        $memo_splicepos = $ctx->{memo_splicepos};
+    }
+    print "\n" if $console;
+    if ($setting_new_dirty_mark) {
+        $oldest_allowed = 0;
+    }
+TRUNCATE: while (@$recent) {
         # $DB::single++ unless defined $oldest_allowed;
         if (_bigfloatlt($recent->[-1]{epoch}, $oldest_allowed)) {
             pop @$recent;
@@ -2020,12 +2073,40 @@ sub update {
             last TRUNCATE;
         }
     }
+    return {something_done=>$something_done,recent=>$recent};
+}
+sub _update_batch_item {
+    my($self,$item,$canonmeth,$recent,$setting_new_dirty_mark,$oldest_allowed,$something_done,$paths_in_recent,$memo_splicepos) = @_;
+    my($path,$type,$dirty_epoch) = @{$item}{qw(path type epoch)};
+    if (defined $path or defined $type or defined $dirty_epoch) {
+        $path = $self->$canonmeth($path);
+    }
+    # you must calculate the time after having locked, of course
+    my $now = Time::HiRes::time;
+
+    my $epoch;
+    if (defined $dirty_epoch && _bigfloatgt($now,$dirty_epoch)) {
+        $epoch = $dirty_epoch;
+    } else {
+        $epoch = $self->_epoch_monotonically_increasing($now,$recent);
+    }
+    $recent ||= [];
+    my $merged = $self->merged;
+    if ($merged->{epoch} && !$setting_new_dirty_mark) {
+        my $virtualnow = _bigfloatmax($now,$epoch);
+        # for the lower bound I think we need no big math, we calc already
+        my $secs = $self->interval_secs();
+        $oldest_allowed = min($virtualnow - $secs, $merged->{epoch}, $epoch);
+        } else {
+            # as long as we are not merged at all, no limits!
+        }
+    my $lrd = $self->localroot;
     if (defined $path && $path =~ s|^\Q$lrd\E||) {
         $path =~ s|^/||;
         my $splicepos;
         # remove the older duplicates of this $path, irrespective of $type:
         if (defined $dirty_epoch) {
-            my $ctx = $self->_update_with_dirty_epoch($path,$recent,$epoch);
+            my $ctx = $self->_update_with_dirty_epoch($path,$recent,$epoch,$paths_in_recent,$memo_splicepos);
             $recent    = $ctx->{recent};
             $splicepos = $ctx->{splicepos};
             $epoch     = $ctx->{epoch};
@@ -2035,7 +2116,7 @@ sub update {
                 $new_dm = $epoch;
             }
             $self->dirtymark($new_dm);
-            my $merged = $self->merged;
+            $setting_new_dirty_mark = 1;
             if (not defined $merged->{epoch} or _bigfloatlt($epoch,$merged->{epoch})) {
                 $self->merged(+{});
             }
@@ -2045,20 +2126,25 @@ sub update {
         }
         if (defined $splicepos) {
             splice @$recent, $splicepos, 0, { epoch => $epoch, path => $path, type => $type };
+            $paths_in_recent->{$path} = undef;
         }
+        $memo_splicepos = $splicepos;
         $something_done = 1;
     }
-
-    $self->write_recent($recent) if $something_done;
-    $self->_assert_symlink;
-    $self->unlock;
+    return
+        {
+         something_done => $something_done,
+         oldest_allowed => $oldest_allowed,
+         setting_new_dirty_mark => $setting_new_dirty_mark,
+         recent => $recent,
+         memo_splicepos => $memo_splicepos,
+        }
 }
-
 sub _update_with_dirty_epoch {
-    my($self,$path,$recent,$epoch) = @_;
+    my($self,$path,$recent,$epoch,$paths_in_recent,$memo_splicepos) = @_;
     my $splicepos;
     my $new_recent = [];
-    if (grep { $_->{path} ne $path } @$recent) {
+    if (exists $paths_in_recent->{$path}) {
         my $cancel = 0;
     KNOWN_EVENT: for my $i (0..$#$recent) {
             if ($recent->[$i]{path} eq $path) {
@@ -2078,7 +2164,13 @@ sub _update_with_dirty_epoch {
     } elsif (_bigfloatlt($epoch,$recent->[-1]{epoch})) {
         $splicepos = @$recent;
     } else {
-    RECENT: for my $i (0..$#$recent) {
+        my $startingpoint;
+        if (_bigfloatgt($memo_splicepos<=$#$recent && $epoch, $recent->[$memo_splicepos]{epoch})) {
+            $startingpoint = 0;
+        } else {
+            $startingpoint = $memo_splicepos;
+        }
+    RECENT: for my $i ($startingpoint..$#$recent) {
             my $ev = $recent->[$i];
             if ($epoch eq $recent->[$i]{epoch}) {
                 $epoch = _increase_a_bit($epoch, $i ? $recent->[$i-1]{epoch} : undef);

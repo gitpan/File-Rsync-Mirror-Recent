@@ -2,7 +2,7 @@
 
 =head1 NAME
 
-rrr-update - add a file to the dataset
+rrr-update - add a file to/delete a file from the dataset
 
 =head1 SYNOPSIS
 
@@ -16,9 +16,13 @@ rrr-update - add a file to the dataset
 
 my @opt = <<'=back' =~ /B<--(\S+)>/g;
 
+=item B<--add>
+
+Inject a 'new' event.
+
 =item B<--delete>
 
-Inject a delete event.
+Inject a 'delete' event.
 
 =item B<--dry-run|n>
 
@@ -103,6 +107,12 @@ if ($Opt{delete}) {
         die "Didn't find '$file' in this recentfile collection, giving up.";
     }
     $type = "delete";
+} elsif ($Opt{add}) {
+    my $news = $recc->news(contains => { path => $rel_file });
+    if (@$news) {
+        warn "Info: found file in index:\n".YAML::Syck::Dump $news;
+    }
+    $type = "new";
 }
 
 my $epoch = $Opt{epoch};
