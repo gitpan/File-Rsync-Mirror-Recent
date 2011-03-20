@@ -36,7 +36,7 @@ if ($ARGV[0]){
         $version .= "-TRIAL";
     }
 }
-$version .= "-TRIAL";
+# $version .= "-TRIAL";
 
 my $provides = {
                 "File::Rsync::Mirror::Recent" =>
@@ -74,6 +74,7 @@ WriteMakefile
       'File::Basename'   => 0,
       'File::Find::Rule' => 0,
       'File::Path'       => 0,
+      'File::Spec'       => 0,
       'File::Temp'       => 0.21, # removes bogus test on parent directory
       'List::MoreUtils'  => 0,
       'List::Pairwise'   => 0,
@@ -105,7 +106,9 @@ WriteMakefile
      ($ExtUtils::MakeMaker::VERSION >= 6.4502 ?
       (META_MERGE => {
                       # write: git push git+ssh://repo.or.cz/srv/git/rersyncrecent.git master
-                      repository => "git://repo.or.cz/rersyncrecent.git",
+                      resources => {
+                                    repository => "git://repo.or.cz/rersyncrecent.git",
+                                   },
                       provides => $provides,
                      }) : ()),
      @sign,
@@ -156,6 +159,11 @@ tag ::
 
 sign:
 	cpansign -s
+
+test-server-run:
+	$(PERL) bin/rrr-init --force t/testserver
+	$(PERL) bin/rrr-server t/testserver/RECENT-1h.yaml &
+	$(PERL) bin/rrr-init --force t/testserver
 };
   join "", @m;
 }

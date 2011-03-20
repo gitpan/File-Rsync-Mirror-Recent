@@ -28,7 +28,7 @@ use Storable;
 use Time::HiRes qw();
 use YAML::Syck;
 
-use version; our $VERSION = qv('0.0.8');
+use version; our $VERSION = qv('0.1.0');
 
 =head1 SYNOPSIS
 
@@ -243,9 +243,16 @@ Test this with:
        -remote pause.perl.org::authors/RECENT.recent
        -verbose
 
-Note: all parameters that can be passed to recent_events can also be specified here.
+All parameters that can be passed to
+File:Rsync:Mirror:Recentfile::recent_events() can also be specified
+here.
 
-Note: all data are kept in memory
+One additional option is supported. If C<$Options{callback}> is
+specified, it must be a subref. This sub is called whenever one chunk
+of events is found. The first argument to the callback is a reference
+to the currently accumulated array of events.
+
+Note: all data are kept in memory.
 
 =cut
 
@@ -295,6 +302,9 @@ sub news {
         }
         $before = $res->[-1]{epoch};
         $before = $opt{before} if $opt{before} && _bigfloatlt($opt{before},$before);
+        if (my $sub = $opt{callback}) {
+            $sub->($ret);
+        }
     }
     $ret;
 }

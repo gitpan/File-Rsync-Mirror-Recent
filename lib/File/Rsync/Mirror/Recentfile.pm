@@ -214,6 +214,7 @@ BEGIN {
                   "_remember_last_uptodate_call",
                   "_remote_dir",
                   "_remoteroot",
+                  "_requires_fsck",
                   "_rfile",
                   "_rsync",
                   "__verified_tempdir",
@@ -407,8 +408,9 @@ rate and as such are quite useless on their own.
 
 sub aggregate {
     my($self, %option) = @_;
+    my %seen_interval;
     my @aggs = sort { $a->{secs} <=> $b->{secs} }
-        grep { $_->{secs} >= $self->interval_secs }
+        grep { !$seen_interval{$_->{interval}}++ && $_->{secs} >= $self->interval_secs }
             map { { interval => $_, secs => $self->interval_secs($_)} }
                 $self->interval, @{$self->aggregator || []};
     $self->update;
@@ -772,13 +774,15 @@ sub interval_secs {
 
 =head2 $obj->localroot ( $localroot )
 
-Get/set accessor. The local root of the tree.
+Get/set accessor. The local root of the tree. Guaranteed without
+trailing slash.
 
 =cut
 
 sub localroot {
     my ($self, $localroot) = @_;
     if (@_ >= 2) {
+        $localroot =~ s|/$||;
         $self->_localroot($localroot);
         $self->_rfile(undef);
     }
@@ -822,26 +826,32 @@ sub lock {
     my $start = time;
     my $locktimeout = $self->locktimeout || 600;
     my %have_warned;
-  GETLOCK: while (not mkdir "$rfile.lock") {
-        if (open my $fh, "<", "$rfile.lock/process") {
+    my $lockdir = "$rfile.lock";
+    my $procfile = "$lockdir/process";
+ GETLOCK: while (not mkdir $lockdir) {
+        if (open my $fh, "<", $procfile) {
             chomp(my $process = <$fh>);
             if (0) {
+            } elsif ($process !~ /^\d+$/) {
+                warn "Warning: unknown process holds a lock in '$lockdir', waiting..." unless $have_warned{unknown}++;
             } elsif ($$ == $process) {
                 last GETLOCK;
             } elsif (kill 0, $process) {
-                warn "Warning: process $process holds a lock, waiting..." unless $have_warned{$process}++;
+                warn "Warning: process $process holds a lock in '$lockdir', waiting..." unless $have_warned{$process}++;
             } else {
                 warn "Warning: breaking lock held by process $process";
                 sleep 1;
                 last GETLOCK;
             }
+        } else {
+            warn "Warning: unknown process holds a lock in '$lockdir', waiting..." unless $have_warned{unknown}++;
         }
         Time::HiRes::sleep 0.01;
         if (time - $start > $locktimeout) {
             die "Could not acquire lockdirectory '$rfile.lock': $!";
         }
-    }
-    open my $fh, ">", "$rfile.lock/process" or die "Could not open >$rfile.lock/process\: $!";
+    } # GETLOCK
+    open my $fh, ">", $procfile or die "Could not open >$procfile\: $!";
     print $fh $$, "\n";
     close $fh or die "Could not close: $!";
     $self->_is_locked (1);
@@ -865,7 +875,6 @@ sub merge {
     $self->_merge_sanitycheck ( $other );
     $other->lock;
     my $other_recent = $other->recent_events || [];
-    # $DB::single++ if $other->interval_secs eq "2" and grep {$_->{epoch} eq "999.999"} @$other_recent;
     $self->lock;
     $self->_merge_locked ( $other, $other_recent );
     $self->unlock;
@@ -974,12 +983,14 @@ sub _merge_something_done {
 sub _merge_sanitycheck {
     my($self, $other) = @_;
     if ($self->interval_secs <= $other->interval_secs) {
-        die sprintf
-            (
-             "Alert: illegal merge operation of a bigger interval[%d] into a smaller[%d]",
-             $self->interval_secs,
-             $other->interval_secs,
-            );
+        require Carp;
+        Carp::confess
+                (sprintf
+                 (
+                  "Alert: illegal merge operation of a bigger interval[%d] into a smaller[%d]",
+                  $self->interval_secs,
+                  $other->interval_secs,
+                 ));
     }
 }
 
@@ -1483,8 +1494,8 @@ timestamp are returned.
 If C<$options{before}> is specified, only file events before this
 timestamp are returned.
 
-If C<$options{max}> is specified only a maximum of this many events is
-returned.
+If C<$options{max}> is specified only a maximum of this many most
+recent events is returned.
 
 If C<$options{'skip-deletes'}> is specified, no files-to-be-deleted
 will be returned.
@@ -2031,6 +2042,10 @@ sub _locked_batch_update {
     my($self,$batch) = @_;
     my $something_done = 0;
     my $recent = $self->recent_events;
+    unless ($recent->[0]) {
+        # obstetrics
+        $something_done = 1;
+    }
     my %paths_in_recent = map { $_->{path} => undef } @$recent;
     my $interval = $self->interval;
     my $canonmeth = $self->canonize;
@@ -2065,7 +2080,6 @@ sub _locked_batch_update {
         $oldest_allowed = 0;
     }
 TRUNCATE: while (@$recent) {
-        # $DB::single++ unless defined $oldest_allowed;
         if (_bigfloatlt($recent->[-1]{epoch}, $oldest_allowed)) {
             pop @$recent;
             $something_done = 1;
@@ -2244,15 +2258,22 @@ sub uptodate {
         my $minmax = $self->minmax;
         if (exists $minmax->{mtime}) {
             my $rfile = $self->_my_current_rfile;
-            my @stat = stat $rfile or die "Could not stat '$rfile': $!";
-            my $mtime = $stat[9];
-            if (defined $mtime && defined $minmax->{mtime} && $mtime > $minmax->{mtime}) {
-                $why = "mtime[$mtime] of rfile[$rfile] > minmax/mtime[$minmax->{mtime}], so we are not uptodate";
-                $uptodate = 0;
+            my @stat = stat $rfile;
+            if (@stat) {
+                my $mtime = $stat[9];
+                if (defined $mtime && defined $minmax->{mtime} && $mtime > $minmax->{mtime}) {
+                    $why = "mtime[$mtime] of rfile[$rfile] > minmax/mtime[$minmax->{mtime}], so we are not uptodate";
+                    $uptodate = 0;
+                } else {
+                    my $covered = $self->done->covered(@$minmax{qw(max min)});
+                    $why = sprintf "minmax covered[%s], so we return that", defined $covered ? $covered : "UNDEF";
+                    $uptodate = $covered;
+                }
             } else {
-                my $covered = $self->done->covered(@$minmax{qw(max min)});
-                $why = sprintf "minmax covered[%s], so we return that", defined $covered ? $covered : "UNDEF";
-                $uptodate = $covered;
+                require Carp;
+                $why = "Could not stat '$rfile': $!";
+                Carp::cluck($why);
+                $uptodate = 0;
             }
         }
     }
@@ -2300,10 +2321,10 @@ sub write_recent {
     }
     my $minmax = $self->minmax;
     if (!defined $minmax->{max} || _bigfloatlt($minmax->{max},$recent->[0]{epoch})) {
-        $minmax->{max} = $recent->[0]{epoch};
+        $minmax->{max} = @$recent && exists $recent->[0]{epoch} ? $recent->[0]{epoch} : undef;
     }
     if (!defined $minmax->{min} || _bigfloatlt($minmax->{min},$recent->[-1]{epoch})) {
-        $minmax->{min} = $recent->[-1]{epoch};
+        $minmax->{min} = @$recent && exists $recent->[-1]{epoch} ? $recent->[-1]{epoch} : undef;
     }
     $self->minmax($minmax);
     my $meth = sprintf "write_%d", $self->protocol;
