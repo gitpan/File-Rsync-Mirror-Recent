@@ -28,7 +28,7 @@ use Storable;
 use Time::HiRes qw();
 use YAML::Syck;
 
-use version; our $VERSION = qv('0.1.1');
+use version; our $VERSION = qv('0.2.0');
 
 =head1 SYNOPSIS
 
@@ -887,8 +887,8 @@ sub _rmirror_endofloop_sleep {
              time,
              $sleep,
             );
-        sleep $sleep;
     }
+    sleep $sleep;
 }
 
 # it returns two things: abslfile and rfilename. But the abslfile is

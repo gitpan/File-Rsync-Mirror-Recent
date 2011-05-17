@@ -82,6 +82,7 @@ WriteMakefile
       'Data::Serializer' => 0,
       'Time::HiRes'      => 0,
       'YAML::Syck'       => 0,
+      'JSON'             => 2,
       'version'          => 0,
      },
      EXE_FILES    => [
@@ -124,6 +125,12 @@ if ($version_diff){
 }
 
 package MY;
+sub distsignature {
+    my($self) = shift;
+    my $ret = $self->SUPER::distsignature_target(@_);
+    $ret =~ s|cpansign|\`dirname \$(PERL)\`/cpansign|g;
+    return $ret;
+}
 sub postamble {
   my @m;
   push @m, q{
@@ -158,7 +165,7 @@ tag ::
 	git tag -m 'This is $(VERSION)' "$(VERSION)"
 
 sign:
-	cpansign -s
+	`dirname $(PERL)`/cpansign -s
 
 test-server-run:
 	$(PERL) bin/rrr-init --force t/testserver

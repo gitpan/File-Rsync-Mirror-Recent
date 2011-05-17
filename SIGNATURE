@@ -1,5 +1,5 @@
 This file contains message digests of all files listed in MANIFEST,
-signed via the Module::Signature module, version 0.66.
+signed via the Module::Signature module, version 0.68.
 
 To verify the content in this distribution, first make sure you have
 Module::Signature installed, then type:
@@ -14,24 +14,24 @@ not run its Makefile.PL or Build.PL.
 -----BEGIN PGP SIGNED MESSAGE-----
 Hash: SHA1
 
-SHA1 f92889ea9b58232dfd346d165f2a0b4425e3bc7f Changes
+SHA1 d98d9e5186e994d2d55b2ab9d7d2a31974ba6153 Changes
 SHA1 62721cd339c89993a88a1a5bea6c148e87e8c949 HOWTO.mirrorcpan
 SHA1 e35446ba4d9c1f258eef69413c11c202edc37e16 MANIFEST
 SHA1 ce74ae75ce94d892e544b0d525831a44ddd421f3 MANIFEST.SKIP
-SHA1 cb4a57d7a1f0104d555b5a351905fba3f1946c3c META.yml
-SHA1 f96564c501ec2d05ae72a599d0decaf75aeda2e5 Makefile.PL
+SHA1 2a61502d9658e250611a6041e82ef1965a6e6ddd META.yml
+SHA1 8f566fe1dee57fbad6710b4f95e39ac0abe81109 Makefile.PL
 SHA1 7b9183ab00dc9022847d0eb67691b960942ee14d README
 SHA1 41aba12fd91544716367d852ae4cc5a77bd98a9b Todo
 SHA1 e7dd315d1c87024f5430daf3a17ef6f2b3b5c763 bin/rrr
 SHA1 7a7c4c023ab4b19a9d1242472e56fc769c47177a bin/rrr-aggregate
-SHA1 73c0feaee368bc61107af78f668934c6f270442a bin/rrr-client
+SHA1 8e824f89f8f7e3f3a2e59513e1750b21170ef352 bin/rrr-client
 SHA1 f330686261e278b9dc9d99afed6d3ff06301a844 bin/rrr-fsck
 SHA1 bed08e9714f3f99f21fc9198e3d9a53a16a40bb8 bin/rrr-init
 SHA1 de797e94841a6e1165b4d5bdaa75db2086591bd7 bin/rrr-news
 SHA1 1a25f38fe4172f9814f534de1101eab1c0989632 bin/rrr-overview
 SHA1 4c50eb4d08d7eb3df4b49ded303e716fe0bd8da7 bin/rrr-server
 SHA1 2bd9e99541f6f26ab659164368db0c0a3947215e bin/rrr-update
-SHA1 544c57865980262b0bc857a75ee5317d0b7cecf0 lib/File/Rsync/Mirror/Recent.pm
+SHA1 ba503441c4ae5ffa7b803820b8a8afeabd8708c6 lib/File/Rsync/Mirror/Recent.pm
 SHA1 83adbb45e046692ae73366fb8deb6284fb08b5b6 lib/File/Rsync/Mirror/Recentfile.pm
 SHA1 cfbb350da5abd5462b3d6c79f95e01fac8e32ad4 lib/File/Rsync/Mirror/Recentfile/Done.pm
 SHA1 7858aa6309e486298e10bb075b2c76b36501d121 lib/File/Rsync/Mirror/Recentfile/FakeBigFloat.pm
@@ -48,9 +48,9 @@ SHA1 3d441da95e5741843653faf086b33ead8c255c8e t/perlcriticrc
 SHA1 d51bd56359ff586982a17f8adeb9e0636abf3a11 t/pod-coverage.t
 SHA1 640935336dc1123c0069bcf5432bcaedc2cf22d3 t/pod.t
 -----BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.11 (GNU/Linux)
+Version: GnuPG v1.4.10 (GNU/Linux)
 
-iEYEARECAAYFAk2GXeMACgkQ7IA58KMXwV3t1wCfVMtyAc7/A9dyLk55czGS0I5U
-o3YAoIMloTaaEWD5dJQN0jR/8kpFC32o
-=dHA+
+iEYEARECAAYFAk3SHTQACgkQ7IA58KMXwV3BhQCdEt19ywrRBHEc+EJyXfMj0I4T
+blsAn17FqAD7aP1t1o2pfOdU/ZEF428G
+=IUAH
 -----END PGP SIGNATURE-----
