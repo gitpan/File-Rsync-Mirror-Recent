@@ -28,7 +28,7 @@ use Storable;
 use Time::HiRes qw();
 use YAML::Syck;
 
-use version; our $VERSION = qv('0.2.0');
+use version; our $VERSION = qv('0.2.1');
 
 =head1 SYNOPSIS
 
@@ -857,7 +857,7 @@ sub _rmirror_runstatusfile_write {
     my $start = time;
     while (not mkdir "$file.lock") {
         Time::HiRes::sleep 0.15;
-        warn "*** waiting for lock ***" if time - $start >= 3;
+        warn "*** waiting for lock directory '$file.lock' ***" if time - $start >= 3;
     }
     YAML::Syck::DumpFile
           (
