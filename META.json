@@ -4,7 +4,7 @@
       "Andreas König <andreas.koenig.7os6VVqR@franz.ak.mind.de>"
    ],
    "dynamic_config" : 1,
-   "generated_by" : "ExtUtils::MakeMaker version 6.59, CPAN::Meta::Converter version 2.112150",
+   "generated_by" : "ExtUtils::MakeMaker version 6.6302, CPAN::Meta::Converter version 2.112621",
    "license" : [
       "unknown"
    ],
@@ -55,7 +55,7 @@
    "provides" : {
       "File::Rsync::Mirror::Recent" : {
          "file" : "lib/File/Rsync/Mirror/Recent.pm",
-         "version" : "v0.3.0"
+         "version" : "v0.3.1"
       },
       "File::Rsync::Mirror::Recentfile" : {
          "file" : "lib/File/Rsync/Mirror/Recentfile.pm",
@@ -76,5 +76,5 @@
          "url" : "git://repo.or.cz/rersyncrecent.git"
       }
    },
-   "version" : "v0.3.0"
+   "version" : "v0.3.1"
 }
