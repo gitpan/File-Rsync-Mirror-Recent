@@ -55,7 +55,7 @@
    "provides" : {
       "File::Rsync::Mirror::Recent" : {
          "file" : "lib/File/Rsync/Mirror/Recent.pm",
-         "version" : "v0.3.3"
+         "version" : "v0.3.4"
       },
       "File::Rsync::Mirror::Recentfile" : {
          "file" : "lib/File/Rsync/Mirror/Recentfile.pm",
@@ -76,5 +76,5 @@
          "url" : "git://repo.or.cz/rersyncrecent.git"
       }
    },
-   "version" : "v0.3.3"
+   "version" : "v0.3.4"
 }
