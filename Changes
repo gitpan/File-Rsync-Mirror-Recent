@@ -1,3 +1,11 @@
+2013-01-05  k  <k@k83.linux.bogus>
+
+	* release 0.3.3
+
+	* no change, just bump the version number. On the previous release I
+	made a tagging mistake. This release shall bring tag and release in
+	sync.
+
 2012-12-31  k  <andk@cpan.org>
 
 	* release 0.3.2
